@@ -168,6 +168,7 @@ export function App({ cwd, onSelect }: Props) {
                 isSearching={isSearching}
                 onSearchChange={setSearchQuery}
                 onSearchSubmit={handleSearchSubmit}
+                width={listWidth - 2}
               />
             </Box>
           </Box>
