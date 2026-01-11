@@ -20,18 +20,35 @@ function KeyHint({ keys, action }: { keys: string; action: string }) {
   );
 }
 
+// Container with consistent border styling
+function KeybindingsContainer({ children }: { children: React.ReactNode }) {
+  return (
+    <Box
+      borderStyle="round"
+      borderColor={mocha.surface1}
+      borderTop
+      borderBottom={false}
+      borderLeft={false}
+      borderRight={false}
+      paddingTop={0}
+    >
+      {children}
+    </Box>
+  );
+}
+
 export function Keybindings({ isSearching }: Props) {
   if (isSearching) {
     return (
-      <Box borderStyle="round" borderColor={mocha.surface1} borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
+      <KeybindingsContainer>
         <KeyHint keys="enter" action="confirm" />
         <KeyHint keys="esc" action="cancel" />
-      </Box>
+      </KeybindingsContainer>
     );
   }
 
   return (
-    <Box borderStyle="round" borderColor={mocha.surface1} borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
+    <KeybindingsContainer>
       <KeyHint keys="↑↓" action="navigate" />
       <KeyHint keys="⏎" action="load" />
       <KeyHint keys="/" action="search" />
@@ -39,6 +56,6 @@ export function Keybindings({ isSearching }: Props) {
       <KeyHint keys="d" action="delete" />
       <KeyHint keys="q" action="quit" />
       {isDevMode() && <KeyHint keys="r" action="fixtures" />}
-    </Box>
+    </KeybindingsContainer>
   );
 }

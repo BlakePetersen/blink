@@ -45,19 +45,29 @@ function getGradientColor(position: number): string {
   return interpolateColor(gradientColors[index], gradientColors[index + 1], factor);
 }
 
-// Render text with gradient colors
-function GradientText({ children }: { children: string }) {
-  const chars = children.split('');
+// Render text with gradient colors (memoized to avoid re-renders)
+const GradientText = React.memo(function GradientText({
+  children,
+}: {
+  children: string;
+}) {
+  const length = children.length || 1;
+  const chars = React.useMemo(() => children.split(''), [children]);
+  const colors = React.useMemo(
+    () => Array.from({ length }, (_, i) => getGradientColor(i / (length - 1 || 1))),
+    [length]
+  );
+
   return (
     <>
       {chars.map((char, i) => (
-        <Text key={i} color={getGradientColor(i / (chars.length - 1 || 1))}>
+        <Text key={i} color={colors[i]}>
           {char}
         </Text>
       ))}
     </>
   );
-}
+});
 
 export function Header() {
   const logo = '░░░ ▒▒▒ ▓▓▓ ███ BLINK ███ ▓▓▓ ▒▒▒ ░░░';
