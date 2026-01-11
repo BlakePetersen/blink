@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { Box, Text } from 'ink';
-import { formatDistanceToNow } from 'date-fns';
 import { SessionGroup, Session } from '../lib/types.js';
+import { mocha, colors } from '../theme.js';
 
 interface Props {
   groups: SessionGroup[];
@@ -13,48 +13,56 @@ interface Props {
 }
 
 export function SessionList({ groups, selectedIndex, width }: Props) {
-  // Flatten sessions with group context for index calculation
   let currentIndex = 0;
-  
+
   return (
     <Box flexDirection="column" width={width}>
       {groups.map((group, groupIdx) => (
         <Box key={groupIdx} flexDirection="column" marginBottom={1}>
-          {/* Group header */}
-          <Text color="magenta" dimColor>
-            {group.icon} {group.label}
-          </Text>
-          
+          {/* Group header with subtle accent */}
+          <Box>
+            <Text color={mocha.overlay1}>
+              {group.icon}{' '}
+            </Text>
+            <Text color={mocha.subtext0} bold>
+              {group.label.toUpperCase()}
+            </Text>
+          </Box>
+
           {/* Sessions in group */}
-          {group.sessions.map((session, sessionIdx) => {
+          {group.sessions.map((session) => {
             const isSelected = currentIndex === selectedIndex;
-            const itemIndex = currentIndex;
             currentIndex++;
-            
-            const timeAgo = formatDistanceToNow(session.created, { addSuffix: false });
-            const title = session.title.length > width - 8 
-              ? session.title.slice(0, width - 11) + '...'
-              : session.title;
-            
+
+            const title =
+              session.title.length > width - 6
+                ? session.title.slice(0, width - 9) + '...'
+                : session.title;
+
             return (
-              <Box key={session.path} paddingLeft={2}>
-                <Text
-                  color={isSelected ? 'white' : undefined}
-                  backgroundColor={isSelected ? 'magenta' : undefined}
-                  bold={isSelected}
-                >
-                  {isSelected ? '● ' : '  '}
-                  {title}
-                </Text>
+              <Box key={session.path} paddingLeft={1}>
+                {isSelected ? (
+                  <Box>
+                    <Text color={colors.primary}>❯ </Text>
+                    <Text color={mocha.text} bold>
+                      {title}
+                    </Text>
+                  </Box>
+                ) : (
+                  <Box>
+                    <Text color={mocha.surface2}>  </Text>
+                    <Text color={mocha.subtext0}>{title}</Text>
+                  </Box>
+                )}
               </Box>
             );
           })}
         </Box>
       ))}
-      
+
       {groups.length === 0 && (
         <Box paddingLeft={2}>
-          <Text dimColor>No sessions found</Text>
+          <Text color={mocha.overlay0}>No sessions found</Text>
         </Box>
       )}
     </Box>

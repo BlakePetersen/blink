@@ -1,7 +1,7 @@
 // ABOUTME: Main App component for Blink TUI
 // ABOUTME: Manages state, keyboard input, and overall layout
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { Header } from './components/Header.js';
 import { SessionList, getTotalSessions, getSessionAtIndex } from './components/SessionList.js';
@@ -12,6 +12,7 @@ import { loadAllSessions, filterSessions, getAllTags, deleteSession, loadFixture
 import { SessionGroup, Session } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
+import { mocha, colors } from './theme.js';
 
 interface Props {
   cwd: string;
@@ -129,34 +130,55 @@ export function App({ cwd, onSelect }: Props) {
   // Delete confirmation overlay
   if (confirmDelete) {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text color="red" bold>Delete session?</Text>
-        <Text>{confirmDelete.title}</Text>
-        <Text dimColor>{confirmDelete.path}</Text>
+      <Box
+        flexDirection="column"
+        padding={2}
+        borderStyle="round"
+        borderColor={colors.error}
+      >
+        <Box marginBottom={1}>
+          <Text color={colors.error}>⚠ </Text>
+          <Text color={mocha.text} bold>
+            Delete session?
+          </Text>
+        </Box>
+        <Text color={mocha.text}>{confirmDelete.title}</Text>
+        <Text color={mocha.overlay0}>{confirmDelete.path}</Text>
         <Box marginTop={1}>
-          <Text>Press </Text>
-          <Text color="red" bold>y</Text>
-          <Text> to confirm, any other key to cancel</Text>
+          <Text color={mocha.subtext0}>Press </Text>
+          <Text color={colors.error} bold>
+            y
+          </Text>
+          <Text color={mocha.subtext0}> to confirm, any other key to cancel</Text>
         </Box>
       </Box>
     );
   }
-  
+
   return (
     <Box flexDirection="column" width={width} height={height}>
       {/* Header */}
       <Header />
-      
+
       {/* Main content */}
       <Box flexGrow={1}>
         {/* Left pane - session list */}
-        <Box flexDirection="column" width={listWidth} borderStyle="single" borderRight>
+        <Box
+          flexDirection="column"
+          width={listWidth}
+          borderStyle="round"
+          borderColor={mocha.surface1}
+          borderRight
+          borderTop={false}
+          borderBottom={false}
+          borderLeft={false}
+        >
           <SessionList
             groups={filteredGroups}
             selectedIndex={selectedIndex}
             width={listWidth - 2}
           />
-          
+
           {/* Filter bar at bottom of left pane */}
           <Box flexGrow={1} justifyContent="flex-end">
             <FilterBar
@@ -169,11 +191,11 @@ export function App({ cwd, onSelect }: Props) {
             />
           </Box>
         </Box>
-        
+
         {/* Right pane - preview */}
         <Preview session={selectedSession} width={previewWidth} />
       </Box>
-      
+
       {/* Footer */}
       <Keybindings isSearching={isSearching} />
     </Box>

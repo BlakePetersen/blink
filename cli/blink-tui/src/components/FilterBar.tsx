@@ -4,6 +4,8 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
+import { Badge } from '@inkjs/ui';
+import { mocha, colors } from '../theme.js';
 
 interface Props {
   tags: string[];
@@ -23,41 +25,41 @@ export function FilterBar({
   onSearchSubmit,
 }: Props) {
   return (
-    <Box flexDirection="column" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
+    <Box flexDirection="column" paddingTop={0}>
       {/* Tags row */}
       {tags.length > 0 && (
-        <Box>
-          {tags.slice(0, 8).map(tag => {
+        <Box gap={1} marginBottom={1}>
+          {tags.slice(0, 6).map((tag) => {
             const isSelected = selectedTags.includes(tag);
             return (
-              <Text
+              <Badge
                 key={tag}
-                color={isSelected ? 'white' : 'red'}
-                backgroundColor={isSelected ? 'red' : undefined}
-                dimColor={!isSelected}
+                color={isSelected ? mocha.mauve : mocha.surface2}
               >
-                「{tag}」{' '}
-              </Text>
+                {isSelected ? `● ${tag}` : tag}
+              </Badge>
             );
           })}
           {selectedTags.length > 0 && (
-            <Text dimColor> [×]</Text>
+            <Text color={mocha.overlay0}> ×</Text>
           )}
         </Box>
       )}
-      
+
       {/* Search row */}
       <Box>
-        <Text color="gray">⌕ </Text>
+        <Text color={isSearching ? colors.primary : mocha.overlay0}>⌕ </Text>
         {isSearching ? (
           <TextInput
             value={searchQuery}
             onChange={onSearchChange}
             onSubmit={onSearchSubmit}
-            placeholder="search..."
+            placeholder="type to search..."
           />
         ) : (
-          <Text dimColor>{searchQuery || 'press / to search'}</Text>
+          <Text color={mocha.overlay0}>
+            {searchQuery || 'press / to search'}
+          </Text>
         )}
       </Box>
     </Box>
