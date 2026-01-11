@@ -8,6 +8,7 @@ import {
   calculateWavePosition,
   calculateBreathPhase,
   shouldShimmer,
+  calculateAnimationState,
   interpolateColor
 } from '../animation.js';
 
@@ -108,6 +109,42 @@ describe('animation', () => {
       const result = interpolateColor(colors, 0.5);
       // Should be gray (~#808080)
       expect(result).toMatch(/^#[0-9a-f]{6}$/i);
+    });
+  });
+
+  describe('shouldShimmer', () => {
+    it('returns boolean', () => {
+      const result = shouldShimmer(0, 0, 0.5);
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('is deterministic for same inputs', () => {
+      const result1 = shouldShimmer(5, 1000, 0.5);
+      const result2 = shouldShimmer(5, 1000, 0.5);
+      expect(result1).toBe(result2);
+    });
+
+    it('varies by character index', () => {
+      // Different indices at same time may give different results
+      const results = Array.from({ length: 20 }, (_, i) => shouldShimmer(i, 1000, 0.5));
+      // With 50% probability, we should see both true and false
+      expect(results.some(r => r === true)).toBe(true);
+      expect(results.some(r => r === false)).toBe(true);
+    });
+  });
+
+  describe('calculateAnimationState', () => {
+    it('returns all animation state properties', () => {
+      const state = calculateAnimationState(1000);
+      expect(state).toHaveProperty('cyclePosition');
+      expect(state).toHaveProperty('wavePosition');
+      expect(state).toHaveProperty('breathPhase');
+      expect(state).toHaveProperty('elapsed');
+    });
+
+    it('includes elapsed time in state', () => {
+      const state = calculateAnimationState(1234);
+      expect(state.elapsed).toBe(1234);
     });
   });
 });
