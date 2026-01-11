@@ -147,7 +147,7 @@ export function App({ cwd, onSelect }: Props) {
     <ThemeProvider>
       <Box flexDirection="column" width={width} height={height}>
         {/* Header */}
-        <Header />
+        <Header width={width} />
 
         {/* Main content */}
         <Box flexGrow={1}>
