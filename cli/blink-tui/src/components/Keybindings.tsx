@@ -4,30 +4,41 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { isDevMode } from '../lib/dev-mode.js';
+import { mocha } from '../theme.js';
 
 interface Props {
   isSearching: boolean;
 }
 
+// Key hint component for consistent styling
+function KeyHint({ keys, action }: { keys: string; action: string }) {
+  return (
+    <Box marginRight={2}>
+      <Text color={mocha.mauve}>{keys}</Text>
+      <Text color={mocha.overlay0}> {action}</Text>
+    </Box>
+  );
+}
+
 export function Keybindings({ isSearching }: Props) {
   if (isSearching) {
     return (
-      <Box>
-        <Text dimColor>
-          enter confirm  esc cancel
-        </Text>
+      <Box borderStyle="round" borderColor={mocha.surface1} borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
+        <KeyHint keys="enter" action="confirm" />
+        <KeyHint keys="esc" action="cancel" />
       </Box>
     );
   }
 
-  const devHint = isDevMode() ? '  r fixtures' : '';
-
   return (
-    <Box>
-      <Text dimColor>
-        ↑↓ navigate  enter load  / search  t tags  d delete  q quit{devHint}
-      </Text>
-      <Text dimColor>  ˚  ·</Text>
+    <Box borderStyle="round" borderColor={mocha.surface1} borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
+      <KeyHint keys="↑↓" action="navigate" />
+      <KeyHint keys="⏎" action="load" />
+      <KeyHint keys="/" action="search" />
+      <KeyHint keys="t" action="tags" />
+      <KeyHint keys="d" action="delete" />
+      <KeyHint keys="q" action="quit" />
+      {isDevMode() && <KeyHint keys="r" action="fixtures" />}
     </Box>
   );
 }
