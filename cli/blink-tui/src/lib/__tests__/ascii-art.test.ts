@@ -44,5 +44,10 @@ describe('ascii-art', () => {
       const lines = getHeaderLines('full');
       expect(lines.length).toBe(HEADER_HEIGHTS.full);
     });
+
+    it('returns correct number of lines for medium header', () => {
+      const lines = getHeaderLines('medium');
+      expect(lines.length).toBe(HEADER_HEIGHTS.medium);
+    });
   });
 });
