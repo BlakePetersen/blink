@@ -3,6 +3,13 @@
 
 import { describe, it, expect } from 'vitest';
 import { applyPreset, DEFAULT_SETTINGS, THEME_PRESETS } from '../settings.js';
+import {
+  calculateCyclePosition,
+  calculateWavePosition,
+  calculateBreathPhase,
+  shouldShimmer,
+  interpolateColor
+} from '../animation.js';
 
 describe('settings', () => {
   describe('DEFAULT_SETTINGS', () => {
@@ -48,6 +55,59 @@ describe('settings', () => {
         const result = applyPreset(name);
         expect(result).toEqual(preset);
       }
+    });
+  });
+});
+
+describe('animation', () => {
+  describe('calculateCyclePosition', () => {
+    it('returns value between 0 and 1', () => {
+      const position = calculateCyclePosition(1000, 4000);
+      expect(position).toBeGreaterThanOrEqual(0);
+      expect(position).toBeLessThanOrEqual(1);
+    });
+
+    it('cycles based on elapsed time and duration', () => {
+      expect(calculateCyclePosition(0, 4000)).toBe(0);
+      expect(calculateCyclePosition(2000, 4000)).toBe(0.5);
+      expect(calculateCyclePosition(4000, 4000)).toBe(0);
+    });
+  });
+
+  describe('calculateWavePosition', () => {
+    it('returns value between 0 and 1', () => {
+      const position = calculateWavePosition(500, 2000);
+      expect(position).toBeGreaterThanOrEqual(0);
+      expect(position).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe('calculateBreathPhase', () => {
+    it('returns brightness multiplier between 0.7 and 1', () => {
+      for (let t = 0; t < 4000; t += 100) {
+        const phase = calculateBreathPhase(t, 4000);
+        expect(phase).toBeGreaterThanOrEqual(0.7);
+        expect(phase).toBeLessThanOrEqual(1);
+      }
+    });
+  });
+
+  describe('interpolateColor', () => {
+    it('returns first color at position 0', () => {
+      const colors = ['#ff0000', '#00ff00', '#0000ff'];
+      expect(interpolateColor(colors, 0)).toBe('#ff0000');
+    });
+
+    it('returns last color at position 1', () => {
+      const colors = ['#ff0000', '#00ff00', '#0000ff'];
+      expect(interpolateColor(colors, 1)).toBe('#0000ff');
+    });
+
+    it('blends colors at intermediate positions', () => {
+      const colors = ['#000000', '#ffffff'];
+      const result = interpolateColor(colors, 0.5);
+      // Should be gray (~#808080)
+      expect(result).toMatch(/^#[0-9a-f]{6}$/i);
     });
   });
 });
