@@ -11,9 +11,10 @@ import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation
 interface Props {
   session: Session | null;
   width: number;
+  height?: number;
 }
 
-export function Preview({ session, width }: Props) {
+export function Preview({ session, width, height }: Props) {
   const { settings, animationState } = useTheme();
   const { colors, animation } = settings;
   const { cyclePosition, elapsed } = animationState;
@@ -39,7 +40,7 @@ export function Preview({ session, width }: Props) {
 
   if (!session) {
     return (
-      <Box flexDirection="column" width={width} paddingLeft={2}>
+      <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
         <Text dimColor>Select a session to preview</Text>
       </Box>
     );
@@ -48,7 +49,7 @@ export function Preview({ session, width }: Props) {
   const timeAgo = formatDistanceToNow(session.created, { addSuffix: true });
 
   return (
-    <Box flexDirection="column" width={width} paddingLeft={2}>
+    <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
       {/* Title */}
       <Text color={titleColor} bold>
         ✦ {session.title}

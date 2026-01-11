@@ -178,7 +178,13 @@ export function App({ cwd, onSelect }: Props) {
         </Box>
 
         {/* Footer */}
-        <Keybindings isSearching={isSearching} />
+        <Keybindings
+          isSearching={isSearching}
+          isDeleting={!!confirmDelete}
+          currentIndex={selectedIndex}
+          totalCount={totalSessions}
+          width={width}
+        />
       </Box>
     </ThemeProvider>
   );

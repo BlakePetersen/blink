@@ -12,9 +12,10 @@ interface Props {
   groups: SessionGroup[];
   selectedIndex: number;
   width: number;
+  height?: number;
 }
 
-export function SessionList({ groups, selectedIndex, width }: Props) {
+export function SessionList({ groups, selectedIndex, width, height }: Props) {
   const { settings, animationState } = useTheme();
   const { colors, animation } = settings;
   const { breathPhase } = animationState;
@@ -36,7 +37,7 @@ export function SessionList({ groups, selectedIndex, width }: Props) {
   let currentIndex = 0;
 
   return (
-    <Box flexDirection="column" width={width}>
+    <Box flexDirection="column" width={width} height={height} paddingX={1}>
       {groups.map((group, groupIdx) => (
         <Box key={groupIdx} flexDirection="column" marginBottom={1}>
           {/* Group header */}

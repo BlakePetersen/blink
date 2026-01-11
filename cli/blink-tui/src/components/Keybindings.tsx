@@ -1,70 +1,95 @@
-// ABOUTME: Footer component showing available keyboard shortcuts
-// ABOUTME: Displays key letters with accent color from theme
+// ABOUTME: Single-line keybindings footer
+// ABOUTME: Context-aware shortcuts with position indicator
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Box, Text } from 'ink';
-import { isDevMode } from '../lib/dev-mode.js';
 import { useTheme } from '../lib/theme.js';
+import { isDevMode } from '../lib/dev-mode.js';
 
 interface Props {
   isSearching: boolean;
+  isDeleting?: boolean;
+  currentIndex: number;
+  totalCount: number;
+  width: number;
 }
 
-interface KeyBinding {
-  key: string;
-  label: string;
-}
-
-function KeyBindingDisplay({ bindings, accentColor }: { bindings: KeyBinding[], accentColor: string }) {
-  return (
-    <>
-      {bindings.map((binding, i) => (
-        <React.Fragment key={binding.key}>
-          {i > 0 && <Text dimColor>  </Text>}
-          <Text color={accentColor}>{binding.key}</Text>
-          <Text dimColor> {binding.label}</Text>
-        </React.Fragment>
-      ))}
-    </>
-  );
-}
-
-export function Keybindings({ isSearching }: Props) {
+export function Keybindings({
+  isSearching,
+  isDeleting,
+  currentIndex,
+  totalCount,
+  width,
+}: Props) {
   const { settings } = useTheme();
   const { colors } = settings;
 
-  const searchBindings: KeyBinding[] = useMemo(() => [
-    { key: 'enter', label: 'confirm' },
-    { key: 'esc', label: 'cancel' },
-  ], []);
+  const isNarrow = width < 80;
 
-  const normalBindings: KeyBinding[] = useMemo(() => {
-    const bindings: KeyBinding[] = [
-      { key: '↑↓', label: 'navigate' },
-      { key: 'enter', label: 'load' },
-      { key: '/', label: 'search' },
-      { key: 't', label: 'tags' },
-      { key: 'd', label: 'delete' },
-      { key: 'q', label: 'quit' },
-    ];
-    if (isDevMode()) {
-      bindings.push({ key: 'r', label: 'fixtures' });
-    }
-    return bindings;
-  }, []);
+  if (isDeleting) {
+    return (
+      <Box justifyContent="space-between" width={width}>
+        <Box gap={2}>
+          <Text>
+            <Text color={colors.accent1}>y</Text>
+            <Text dimColor> confirm</Text>
+          </Text>
+          <Text dimColor>any key cancel</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   if (isSearching) {
     return (
-      <Box>
-        <KeyBindingDisplay bindings={searchBindings} accentColor={colors.accent1} />
+      <Box justifyContent="space-between" width={width}>
+        <Box gap={2}>
+          <Text>
+            <Text color={colors.accent1}>enter</Text>
+            <Text dimColor> confirm</Text>
+          </Text>
+          <Text>
+            <Text color={colors.accent1}>esc</Text>
+            <Text dimColor> cancel</Text>
+          </Text>
+        </Box>
       </Box>
     );
   }
 
   return (
-    <Box>
-      <KeyBindingDisplay bindings={normalBindings} accentColor={colors.accent1} />
-      <Text dimColor>  ˚  ·</Text>
+    <Box justifyContent="space-between" width={width}>
+      <Box gap={2}>
+        <Text>
+          <Text color={colors.accent1}>↑↓</Text>
+          <Text dimColor>{isNarrow ? '' : ' navigate'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>{isNarrow ? '⏎' : 'enter'}</Text>
+          <Text dimColor>{isNarrow ? '' : ' load'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>t</Text>
+          <Text dimColor>{isNarrow ? '' : ' tags'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>d</Text>
+          <Text dimColor>{isNarrow ? '' : ' delete'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>q</Text>
+          <Text dimColor>{isNarrow ? '' : ' quit'}</Text>
+        </Text>
+        {isDevMode() && (
+          <Text>
+            <Text color={colors.accent1}>r</Text>
+            <Text dimColor>{isNarrow ? '' : ' fixtures'}</Text>
+          </Text>
+        )}
+      </Box>
+      <Text dimColor>
+        {currentIndex + 1}/{totalCount}
+      </Text>
     </Box>
   );
 }
