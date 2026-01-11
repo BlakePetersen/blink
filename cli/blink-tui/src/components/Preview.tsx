@@ -1,5 +1,5 @@
 // ABOUTME: Right pane component showing selected session details
-// ABOUTME: Displays title with cycling effect and tags with shimmer
+// ABOUTME: Displays title, status, next steps, and files
 
 import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';

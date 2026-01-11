@@ -1,5 +1,5 @@
 // ABOUTME: Filter bar component with tag chips and search input
-// ABOUTME: Allows filtering sessions by tags with pulse on active filters
+// ABOUTME: Allows filtering sessions by tags and search text
 
 import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';

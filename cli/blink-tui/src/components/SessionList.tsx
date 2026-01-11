@@ -1,5 +1,5 @@
 // ABOUTME: Left pane component showing session groups and items
-// ABOUTME: Handles selection state with breathing glow effect on selected item
+// ABOUTME: Handles selection state and keyboard navigation
 
 import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
