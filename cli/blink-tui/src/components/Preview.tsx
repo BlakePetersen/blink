@@ -1,10 +1,12 @@
 // ABOUTME: Right pane component showing selected session details
-// ABOUTME: Displays title, status, next steps, and files
+// ABOUTME: Displays title with cycling effect and tags with shimmer
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import { formatDistanceToNow } from 'date-fns';
 import { Session } from '../lib/types.js';
+import { useTheme } from '../lib/theme.js';
+import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation.js';
 
 interface Props {
   session: Session | null;
@@ -12,6 +14,29 @@ interface Props {
 }
 
 export function Preview({ session, width }: Props) {
+  const { settings, animationState } = useTheme();
+  const { colors, animation } = settings;
+  const { cyclePosition, elapsed } = animationState;
+
+  // Slow cycling color for title (75% slower than header)
+  const titleColor = useMemo(() => {
+    if (!animation.cycling) {
+      return colors.accent2;
+    }
+    // Slow the cycle by using a fraction of the position
+    const slowPosition = cyclePosition * 0.25;
+    return interpolateColor(colors.base, slowPosition);
+  }, [colors.base, colors.accent2, animation.cycling, cyclePosition]);
+
+  // Tag color with shimmer effect
+  const getTagColor = (tagIndex: number): string => {
+    const baseColor = colors.accent3;
+    if (animation.shimmer && shouldShimmer(tagIndex + 100, elapsed, 0.015)) {
+      return brightenColor(baseColor, 0.6);
+    }
+    return baseColor;
+  };
+
   if (!session) {
     return (
       <Box flexDirection="column" width={width} paddingLeft={2}>
@@ -19,34 +44,34 @@ export function Preview({ session, width }: Props) {
       </Box>
     );
   }
-  
+
   const timeAgo = formatDistanceToNow(session.created, { addSuffix: true });
-  
+
   return (
     <Box flexDirection="column" width={width} paddingLeft={2}>
       {/* Title */}
-      <Text color="magentaBright" bold>
+      <Text color={titleColor} bold>
         ✦ {session.title}
       </Text>
-      
+
       {/* Metadata */}
       <Box marginTop={1}>
         <Text dimColor>
           {session.type} · {timeAgo}
         </Text>
       </Box>
-      
+
       {/* Tags */}
       {session.tags.length > 0 && (
         <Box marginTop={1}>
           {session.tags.map((tag, i) => (
-            <Text key={tag} color="red" dimColor>
+            <Text key={tag} color={getTagColor(i)} dimColor>
               {i > 0 ? ' ' : ''}「{tag}」
             </Text>
           ))}
         </Box>
       )}
-      
+
       {/* Working On */}
       {session.workingOn && (
         <Box flexDirection="column" marginTop={1}>
@@ -54,7 +79,7 @@ export function Preview({ session, width }: Props) {
           <Text>{truncate(session.workingOn, width - 4)}</Text>
         </Box>
       )}
-      
+
       {/* Status */}
       {session.status && (
         <Box flexDirection="column" marginTop={1}>
@@ -62,7 +87,7 @@ export function Preview({ session, width }: Props) {
           <Text>{truncate(session.status, width - 4)}</Text>
         </Box>
       )}
-      
+
       {/* Next Steps */}
       {session.nextSteps && session.nextSteps.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
@@ -72,7 +97,7 @@ export function Preview({ session, width }: Props) {
           ))}
         </Box>
       )}
-      
+
       {/* Files */}
       {session.files && session.files.length > 0 && (
         <Box flexDirection="column" marginTop={1}>

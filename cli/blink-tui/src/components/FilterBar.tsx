@@ -1,9 +1,11 @@
 // ABOUTME: Filter bar component with tag chips and search input
-// ABOUTME: Allows filtering sessions by tags and search text
+// ABOUTME: Allows filtering sessions by tags with pulse on active filters
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
+import { useTheme } from '../lib/theme.js';
+import { adjustBrightness } from '../lib/animation.js';
 
 interface Props {
   tags: string[];
@@ -22,6 +24,24 @@ export function FilterBar({
   onSearchChange,
   onSearchSubmit,
 }: Props) {
+  const { settings, animationState } = useTheme();
+  const { colors, animation } = settings;
+  const { breathPhase } = animationState;
+
+  // Pulsing color for active filters (subtle pulse using breathing phase)
+  const activeFilterBgColor = useMemo(() => {
+    const baseColor = colors.accent2;
+    if (!animation.breathing) {
+      return baseColor;
+    }
+    // Subtle pulse - 50% intensity of header breathing
+    return adjustBrightness(baseColor, 0.8 + (breathPhase - 0.85) * 0.3);
+  }, [colors.accent2, animation.breathing, breathPhase]);
+
+  const inactiveFilterColor = useMemo(() => {
+    return colors.accent3;
+  }, [colors.accent3]);
+
   return (
     <Box flexDirection="column" borderStyle="single" borderTop borderBottom={false} borderLeft={false} borderRight={false} paddingTop={0}>
       {/* Tags row */}
@@ -32,8 +52,8 @@ export function FilterBar({
             return (
               <Text
                 key={tag}
-                color={isSelected ? 'white' : 'red'}
-                backgroundColor={isSelected ? 'red' : undefined}
+                color={isSelected ? 'white' : inactiveFilterColor}
+                backgroundColor={isSelected ? activeFilterBgColor : undefined}
                 dimColor={!isSelected}
               >
                 「{tag}」{' '}
@@ -45,7 +65,7 @@ export function FilterBar({
           )}
         </Box>
       )}
-      
+
       {/* Search row */}
       <Box>
         <Text color="gray">⌕ </Text>
