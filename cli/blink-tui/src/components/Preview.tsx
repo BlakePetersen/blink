@@ -1,7 +1,7 @@
 // ABOUTME: Right pane component showing selected session details
 // ABOUTME: Displays title, status, next steps, and files
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import { formatDistanceToNow } from 'date-fns';
 import { Session } from '../lib/types.js';
@@ -30,13 +30,13 @@ export function Preview({ session, width, height }: Props) {
   }, [colors.base, colors.accent2, animation.cycling, cyclePosition]);
 
   // Tag color with shimmer effect
-  const getTagColor = (tagIndex: number): string => {
+  const getTagColor = useCallback((tagIndex: number): string => {
     const baseColor = colors.accent3;
     if (animation.shimmer && shouldShimmer(tagIndex + 100, elapsed, 0.015)) {
       return brightenColor(baseColor, 0.6);
     }
     return baseColor;
-  };
+  }, [colors.accent3, animation.shimmer, elapsed]);
 
   if (!session) {
     return (
