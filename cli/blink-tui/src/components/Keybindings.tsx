@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { Box, Text } from 'ink';
+import { isDevMode } from '../lib/dev-mode.js';
 
 interface Props {
   isSearching: boolean;
@@ -18,11 +19,13 @@ export function Keybindings({ isSearching }: Props) {
       </Box>
     );
   }
-  
+
+  const devHint = isDevMode() ? '  r fixtures' : '';
+
   return (
     <Box>
       <Text dimColor>
-        ↑↓ navigate  enter load  / search  t tags  d delete  q quit
+        ↑↓ navigate  enter load  / search  t tags  d delete  q quit{devHint}
       </Text>
       <Text dimColor>  ˚  ·</Text>
     </Box>

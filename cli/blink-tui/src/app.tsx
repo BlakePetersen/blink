@@ -8,8 +8,10 @@ import { SessionList, getTotalSessions, getSessionAtIndex } from './components/S
 import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
 import { Keybindings } from './components/Keybindings.js';
-import { loadAllSessions, filterSessions, getAllTags, deleteSession } from './lib/sessions.js';
+import { loadAllSessions, filterSessions, getAllTags, deleteSession, loadFixtureSessions } from './lib/sessions.js';
 import { SessionGroup, Session } from './lib/types.js';
+import { isDevMode } from './lib/dev-mode.js';
+import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
 
 interface Props {
   cwd: string;
@@ -103,6 +105,16 @@ export function App({ cwd, onSelect }: Props) {
       if (selectedSession) {
         setConfirmDelete(selectedSession);
       }
+    } else if (input === 'r' && isDevMode()) {
+      const fixtures = loadFixtureSessions(FIXTURES_DIR);
+      const fixtureGroup: SessionGroup = {
+        label: 'Dev Fixtures',
+        icon: '🧪',
+        sessions: fixtures,
+        isGlobal: false,
+      };
+      setAllGroups([fixtureGroup]);
+      setSelectedIndex(0);
     } else if (input === 'q' || key.escape) {
       exit();
     }
