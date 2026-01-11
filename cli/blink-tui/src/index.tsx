@@ -4,8 +4,10 @@
 
 import React from 'react';
 import { render } from 'ink';
+import { ThemeProvider } from '@inkjs/ui';
 import { App } from './app.js';
 import { Session } from './lib/types.js';
+import { theme } from './theme.js';
 
 // Get current working directory from args or use process.cwd()
 const cwd = process.argv[2] || process.cwd();
@@ -16,9 +18,11 @@ function handleSelect(session: Session) {
   console.log(`BLINK_SELECTED:${session.path}`);
 }
 
-// Render the app
+// Render the app with theme
 const { waitUntilExit } = render(
-  <App cwd={cwd} onSelect={handleSelect} />
+  <ThemeProvider theme={theme}>
+    <App cwd={cwd} onSelect={handleSelect} />
+  </ThemeProvider>
 );
 
 waitUntilExit();
