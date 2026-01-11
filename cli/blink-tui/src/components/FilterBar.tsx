@@ -49,7 +49,9 @@ export function FilterBar({
     const parts: React.ReactNode[] = [];
     visibleTags.forEach((tag, idx) => {
       const isActive = selectedTags.includes(tag);
-      if (idx > 0) parts.push(' ');
+      if (idx > 0) {
+        parts.push(<Text key={`sep-${idx}`} backgroundColor={BACKGROUNDS.filterBar}> </Text>);
+      }
       parts.push(
         <Text
           key={tag}
@@ -62,7 +64,7 @@ export function FilterBar({
       );
     });
     if (hiddenCount > 0) {
-      parts.push(' ');
+      parts.push(<Text key="sep-more" backgroundColor={BACKGROUNDS.filterBar}> </Text>);
       parts.push(
         <Text key="more" dimColor backgroundColor={BACKGROUNDS.filterBar}>
           [+{hiddenCount} more]
