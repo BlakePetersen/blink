@@ -94,8 +94,8 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
       }
     } else if (input === ' ') {
       if (item.type === 'toggle') {
-        const key = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
-        updateAnimation(key, !settings.animation[key]);
+        const animationKey = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.return) {
       if (item.id === 'save') {
@@ -107,8 +107,8 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         onCancel();
         exit();
       } else if (item.type === 'toggle') {
-        const key = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
-        updateAnimation(key, !settings.animation[key]);
+        const animationKey = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.escape || input === 'q') {
       onCancel();
