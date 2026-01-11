@@ -1,6 +1,8 @@
 // ABOUTME: Responsive layout calculations for TUI
 // ABOUTME: Handles breakpoints and pane width distribution
 
+import { HeaderSize } from './ascii-art.js';
+
 export const BREAKPOINTS = {
   stacked: 60,
   fullHeader: 100,
@@ -12,7 +14,7 @@ export function getLayoutMode(width: number): LayoutMode {
   return width < BREAKPOINTS.stacked ? 'stacked' : 'side-by-side';
 }
 
-export function getHeaderSize(width: number): 'full' | 'medium' | 'minimal' {
+export function getHeaderSize(width: number): HeaderSize {
   if (width >= BREAKPOINTS.fullHeader) return 'full';
   if (width >= BREAKPOINTS.stacked) return 'medium';
   return 'minimal';
