@@ -104,8 +104,13 @@ export function loadSettings(): Settings {
 
   try {
     const content = fs.readFileSync(settingsPath, 'utf-8');
-    const parsed = JSON.parse(content) as Settings;
-    return parsed;
+    const parsed = JSON.parse(content) as Partial<Settings>;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      colors: { ...DEFAULT_SETTINGS.colors, ...(parsed.colors || {}) },
+      animation: { ...DEFAULT_SETTINGS.animation, ...(parsed.animation || {}) },
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

@@ -2,7 +2,7 @@
 // ABOUTME: Validates theme presets and settings persistence
 
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SETTINGS, THEME_PRESETS } from '../settings.js';
+import { applyPreset, DEFAULT_SETTINGS, THEME_PRESETS } from '../settings.js';
 
 describe('settings', () => {
   describe('DEFAULT_SETTINGS', () => {
@@ -28,6 +28,26 @@ describe('settings', () => {
       expect(THEME_PRESETS).toHaveProperty('minimal');
       expect(THEME_PRESETS).toHaveProperty('cyberpunk');
       expect(THEME_PRESETS).toHaveProperty('ember');
+    });
+  });
+
+  describe('applyPreset', () => {
+    it('returns settings for valid preset name', () => {
+      const result = applyPreset('minimal');
+      expect(result.theme).toBe('minimal');
+      expect(result.colors).toEqual(THEME_PRESETS['minimal'].colors);
+    });
+
+    it('returns DEFAULT_SETTINGS for unknown preset name', () => {
+      const result = applyPreset('nonexistent');
+      expect(result).toEqual(DEFAULT_SETTINGS);
+    });
+
+    it('returns correct settings for each preset', () => {
+      for (const [name, preset] of Object.entries(THEME_PRESETS)) {
+        const result = applyPreset(name);
+        expect(result).toEqual(preset);
+      }
     });
   });
 });
