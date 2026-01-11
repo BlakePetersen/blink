@@ -2,7 +2,7 @@
 // ABOUTME: Validates breakpoints, pane widths, and layout modes
 
 import { describe, it, expect } from 'vitest';
-import { getLayoutMode, calculatePaneWidths, BREAKPOINTS } from '../layout.js';
+import { getLayoutMode, calculatePaneWidths, getHeaderSize, BREAKPOINTS } from '../layout.js';
 
 describe('layout', () => {
   describe('BREAKPOINTS', () => {
@@ -48,6 +48,22 @@ describe('layout', () => {
     it('enforces minimum pane width of 20', () => {
       const result = calculatePaneWidths(100, 'side-by-side', 0.1);
       expect(result.list).toBe(20);
+    });
+  });
+
+  describe('getHeaderSize', () => {
+    it('returns minimal below 60 columns', () => {
+      expect(getHeaderSize(59)).toBe('minimal');
+    });
+
+    it('returns medium at 60-99 columns', () => {
+      expect(getHeaderSize(60)).toBe('medium');
+      expect(getHeaderSize(99)).toBe('medium');
+    });
+
+    it('returns full at 100+ columns', () => {
+      expect(getHeaderSize(100)).toBe('full');
+      expect(getHeaderSize(150)).toBe('full');
     });
   });
 });
