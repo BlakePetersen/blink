@@ -40,7 +40,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const updateSettings = useCallback((updates: Partial<Settings>) => {
     setSettings(prev => {
-      const next = { ...prev, ...updates };
+      const next = {
+        ...prev,
+        ...updates,
+        colors: { ...prev.colors, ...(updates.colors || {}) },
+        animation: { ...prev.animation, ...(updates.animation || {}) },
+      };
       saveSettings(next);
       return next;
     });
