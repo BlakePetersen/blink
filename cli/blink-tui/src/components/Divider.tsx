@@ -1,5 +1,5 @@
-// ABOUTME: Draggable divider between session list and preview
-// ABOUTME: Supports mouse drag to resize panes
+// ABOUTME: Visual divider between session list and preview panes
+// ABOUTME: Displays drag state visually (actual drag handling is in parent)
 
 import React from 'react';
 import { Box, Text } from 'ink';
@@ -22,8 +22,8 @@ export function Divider({ height, isDragging, splitPercent }: Props) {
           color={isDragging ? 'cyan' : 'gray'}
           backgroundColor={BACKGROUNDS.divider}
         >
-          {isDragging && i === Math.floor(height / 2) && splitPercent
-            ? `${splitPercent}%`
+          {isDragging && i === Math.floor(height / 2) && splitPercent !== undefined
+            ? `${String(splitPercent).padStart(2, ' ')}%`.slice(-3)
             : isDragging
             ? ' ┃ '
             : ' │ '}

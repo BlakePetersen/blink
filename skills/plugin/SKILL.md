@@ -13,7 +13,7 @@ Configure themes and animation effects for Blink's visual display.
 When the user runs `/plugin` with no arguments, launch the settings TUI:
 
 ```bash
-cd ~/.claude/plugins/local/blink/cli/blink-tui && pnpm settings
+cd ~/.claude/plugins/blink/cli/blink-tui && pnpm settings
 ```
 
 Tell the user:

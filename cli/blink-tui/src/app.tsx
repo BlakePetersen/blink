@@ -40,8 +40,9 @@ export function App({ cwd, onSelect }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
-  const [splitRatio, setSplitRatio] = useState(0.4);
-  const [isDragging, setIsDragging] = useState(false);
+  // Fixed values until drag-to-resize is implemented
+  const splitRatio = 0.4;
+  const isDragging = false;
 
   // Derived state
   const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
