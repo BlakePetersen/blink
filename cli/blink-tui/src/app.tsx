@@ -19,24 +19,21 @@ interface Props {
 export function App({ cwd, onSelect }: Props) {
   const { exit } = useApp();
   const { stdout } = useStdout();
-  
+
   // Get terminal dimensions
   const width = stdout?.columns || 80;
   const height = stdout?.rows || 24;
-  
+
+  // Load sessions synchronously on first render to avoid race with crash
+  const initialGroups = React.useMemo(() => loadAllSessions(cwd), [cwd]);
+
   // State
-  const [allGroups, setAllGroups] = useState<SessionGroup[]>([]);
+  const [allGroups, setAllGroups] = useState<SessionGroup[]>(initialGroups);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
-  
-  // Load sessions on mount
-  useEffect(() => {
-    const groups = loadAllSessions(cwd);
-    setAllGroups(groups);
-  }, [cwd]);
   
   // Derived state
   const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
