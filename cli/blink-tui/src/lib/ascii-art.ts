@@ -2,8 +2,8 @@
 // ABOUTME: Brutalist style - bold, stark, Berlin nightclub aesthetic
 
 export const HEADER_HEIGHTS = {
-  full: 3,
-  medium: 2,
+  full: 9,
+  medium: 6,
   minimal: 1,
 } as const;
 
@@ -11,14 +11,24 @@ export type HeaderSize = keyof typeof HEADER_HEIGHTS;
 
 // Brutalist monospace - pure geometry, box-drawing characters
 const HEADER_FULL = `
-┏━┓  ┃    ┳ ┏┓┓ ┃ ┃
-┣━┫  ┃    ┃ ┃┗┫ ┣━┫
-┗━┛  ┗━━  ┻ ┛ ┗ ┻ ┻`.trim();
+┏━━━━┓    ┃         ┳    ┏━━┓╻    ┃ ┏┛
+┃    ┃    ┃         ┃    ┃  ┃┃    ┃┏┛
+┃    ┃    ┃         ┃    ┃  ┃┃    ┣┛
+┣━━━━┫    ┃         ┃    ┃  ┃┃    ┣┓
+┃    ┃    ┃         ┃    ┃  ┃┃    ┃┗┓
+┃    ┃    ┃         ┃    ┃  ┃┃    ┃ ┗┓
+┃    ┃    ┃         ┃    ┃  ┃┃    ┃  ┃
+┃    ┃    ┃         ┃    ┃  ┗┛    ┃  ┃
+┗━━━━┛    ┗━━━━━    ┻    ┛        ┻  ┻`.trim();
 
 // Condensed for medium width
 const HEADER_MEDIUM = `
-┣━┓ ┃  ┃ ┃┃┃ ┃┏
-┗━┛ ┗━ ┻ ┛ ┗ ┻┛`.trim();
+┏━━━┓   ┃       ┳   ┏━┓╻   ┃┏┛
+┃   ┃   ┃       ┃   ┃ ┃┃   ┣┛
+┣━━━┫   ┃       ┃   ┃ ┃┃   ┣┓
+┃   ┃   ┃       ┃   ┃ ┃┃   ┃┗┓
+┃   ┃   ┃       ┃   ┃ ┗┛   ┃ ┃
+┗━━━┛   ┗━━━    ┻   ┛      ┻ ┻`.trim();
 
 // Single line - stark
 const HEADER_MINIMAL = `┃BLINK┃`;

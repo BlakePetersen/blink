@@ -7,8 +7,8 @@ import { getHeaderArt, getHeaderLines, HEADER_HEIGHTS } from '../ascii-art.js';
 describe('ascii-art', () => {
   describe('HEADER_HEIGHTS', () => {
     it('defines heights for each size', () => {
-      expect(HEADER_HEIGHTS.full).toBe(3);
-      expect(HEADER_HEIGHTS.medium).toBe(2);
+      expect(HEADER_HEIGHTS.full).toBe(9);
+      expect(HEADER_HEIGHTS.medium).toBe(6);
       expect(HEADER_HEIGHTS.minimal).toBe(1);
     });
   });
