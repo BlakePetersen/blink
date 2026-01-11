@@ -7,23 +7,23 @@ import { getHeaderArt, getHeaderLines, HEADER_HEIGHTS } from '../ascii-art.js';
 describe('ascii-art', () => {
   describe('HEADER_HEIGHTS', () => {
     it('defines heights for each size', () => {
-      expect(HEADER_HEIGHTS.full).toBeGreaterThan(0);
-      expect(HEADER_HEIGHTS.medium).toBeGreaterThan(0);
+      expect(HEADER_HEIGHTS.full).toBe(6);
+      expect(HEADER_HEIGHTS.medium).toBe(3);
       expect(HEADER_HEIGHTS.minimal).toBe(1);
     });
   });
 
   describe('getHeaderArt', () => {
-    it('returns full header with eye for large width', () => {
+    it('returns full header with block characters', () => {
       const art = getHeaderArt('full');
-      expect(art).toContain('BLINK');
-      expect(art).toContain('●'); // eye pupil
+      expect(art).toContain('█'); // block characters
+      expect(art).toContain('╔'); // box drawing
     });
 
-    it('returns medium header without eye', () => {
+    it('returns medium header with condensed blocks', () => {
       const art = getHeaderArt('medium');
-      expect(art).toContain('BLINK');
-      expect(art).not.toContain('●');
+      expect(art).toContain('█');
+      expect(art).toContain('▀');
     });
 
     it('returns minimal single-line header', () => {

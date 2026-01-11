@@ -1,31 +1,31 @@
 // ABOUTME: ASCII art header variants for different screen sizes
-// ABOUTME: Warez NFO-style with flames and all-seeing eye
+// ABOUTME: Brutalist style - bold, stark, Berlin nightclub aesthetic
 
 export const HEADER_HEIGHTS = {
-  full: 10,
-  medium: 4,
+  full: 6,
+  medium: 3,
   minimal: 1,
 } as const;
 
 export type HeaderSize = keyof typeof HEADER_HEIGHTS;
 
-const HEADER_FULL = `░░    ░░    ░░    ░░                     ◢▀▀▀▀▀▀▀◠●◠▀▀▀▀▀▀▀◣                     ░░    ░░    ░░    ░░
-░▒▒░  ░▒▒░  ░▒▒░  ░▒▒░                   ◥▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄◤                   ░▒▒░  ░▒▒░  ░▒▒░  ░▒▒░
- ░▒▓▒░ ░▒▓▒░ ░▒▓▒░ ░▒▓▒░                                                    ░▒▓▒░ ░▒▓▒░ ░▒▓▒░ ░▒▓▒░
-  ░▒▓▓▒░▒▓▓▒░▒▓▓▒░▒▓▓▒░     ██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗     ░▒▓▓▒░▒▓▓▒░▒▓▓▒░▒▓▓▒░
-                            ██╔══██╗██║     ██║████╗  ██║██║ ██╔╝
-                            ██████╔╝██║     ██║██╔██╗ ██║█████╔╝
-                            ██╔══██╗██║     ██║██║╚██╗██║██╔═██╗
-                            ██████╔╝███████╗██║██║ ╚████║██║  ██╗
-                            ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝
-                                        BLINK                     `;
+// Brutalist block letters - heavy, industrial
+const HEADER_FULL = `
+██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗
+██╔══██╗██║     ██║████╗  ██║██║ ██╔╝
+██████╔╝██║     ██║██╔██╗ ██║█████╔╝
+██╔══██╗██║     ██║██║╚██╗██║██╔═██╗
+██████╔╝███████╗██║██║ ╚████║██║  ██╗
+╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝`.trim();
 
-const HEADER_MEDIUM = `░░  ░░  ░░                                                            ░░  ░░  ░░
-░▒▓▒░▒▓▒░   ██████╗ ██╗    ██╗███╗  ██╗██╗  ██╗   ░▒▓▒░▒▓▒░
-            ██████╔╝██║    ██║██╔██╗██║█████╔╝
-            ██████╔╝██████╗██║██║╚████║██║╚██╗  BLINK`;
+// Condensed for medium width
+const HEADER_MEDIUM = `
+█▀▀▄ █   █ █▄ █ █ █
+█▀▀▄ █   █ █ ▀█ █▀▄
+▀▀▀  ▀▀▀ ▀ ▀  ▀ ▀ ▀`.trim();
 
-const HEADER_MINIMAL = `░▒▓░░▒▓░  ▄▀ BLINK ▀▄  ░▓▒░░▓▒░`;
+// Single line - just the word
+const HEADER_MINIMAL = `▌BLINK▐`;
 
 export function getHeaderArt(size: HeaderSize): string {
   switch (size) {
