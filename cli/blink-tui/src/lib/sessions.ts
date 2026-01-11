@@ -7,7 +7,7 @@ import matter from 'gray-matter';
 import { Session, SessionGroup } from './types.js';
 import { config, getProjectPaths } from './config.js';
 
-function parseSession(filePath: string): Session | null {
+export function parseSession(filePath: string): Session | null {
   try {
     const content = readFileSync(filePath, 'utf-8');
     const { data, content: body } = matter(content);
@@ -142,7 +142,7 @@ export function filterSessions(
   selectedTags: string[]
 ): SessionGroup[] {
   const query = searchQuery.toLowerCase();
-  
+
   return groups
     .map(group => ({
       ...group,
@@ -153,7 +153,7 @@ export function filterSessions(
             return false;
           }
         }
-        
+
         // Search filter
         if (query) {
           const searchable = [
@@ -162,14 +162,24 @@ export function filterSessions(
             session.status,
             ...session.tags,
           ].filter(Boolean).join(' ').toLowerCase();
-          
+
           if (!searchable.includes(query)) {
             return false;
           }
         }
-        
+
         return true;
       }),
     }))
     .filter(group => group.sessions.length > 0);
+}
+
+export function loadFixtureSessions(fixturesDir: string): Session[] {
+  if (!existsSync(fixturesDir)) return [];
+
+  const files = readdirSync(fixturesDir).filter(f => f.endsWith('.md'));
+  return files
+    .map(f => parseSession(join(fixturesDir, f)))
+    .filter((s): s is Session => s !== null)
+    .sort((a, b) => b.created.getTime() - a.created.getTime());
 }
