@@ -5,12 +5,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { loadFixtureSessions } from '../sessions.js';
 import { FIXTURES_DIR } from '../__fixtures__/index.js';
 
-describe('sessions', () => {
-  it('placeholder test to verify setup', () => {
-    expect(true).toBe(true);
-  });
-});
-
 describe('loadFixtureSessions', () => {
   it('loads all fixture sessions', () => {
     const sessions = loadFixtureSessions(FIXTURES_DIR);
