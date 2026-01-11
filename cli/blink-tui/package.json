@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/index.tsx",
+    "dev": "BLINK_DEV=1 tsx src/index.tsx",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
