@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { Header } from './components/Header.js';
+import { ThemeProvider } from './lib/theme.js';
 import { SessionList, getTotalSessions, getSessionAtIndex } from './components/SessionList.js';
 import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
@@ -143,39 +144,41 @@ export function App({ cwd, onSelect }: Props) {
   }
   
   return (
-    <Box flexDirection="column" width={width} height={height}>
-      {/* Header */}
-      <Header />
-      
-      {/* Main content */}
-      <Box flexGrow={1}>
-        {/* Left pane - session list */}
-        <Box flexDirection="column" width={listWidth} borderStyle="single" borderRight>
-          <SessionList
-            groups={filteredGroups}
-            selectedIndex={selectedIndex}
-            width={listWidth - 2}
-          />
-          
-          {/* Filter bar at bottom of left pane */}
-          <Box flexGrow={1} justifyContent="flex-end">
-            <FilterBar
-              tags={allTags}
-              selectedTags={selectedTags}
-              searchQuery={searchQuery}
-              isSearching={isSearching}
-              onSearchChange={setSearchQuery}
-              onSearchSubmit={handleSearchSubmit}
+    <ThemeProvider>
+      <Box flexDirection="column" width={width} height={height}>
+        {/* Header */}
+        <Header />
+
+        {/* Main content */}
+        <Box flexGrow={1}>
+          {/* Left pane - session list */}
+          <Box flexDirection="column" width={listWidth} borderStyle="single" borderRight>
+            <SessionList
+              groups={filteredGroups}
+              selectedIndex={selectedIndex}
+              width={listWidth - 2}
             />
+
+            {/* Filter bar at bottom of left pane */}
+            <Box flexGrow={1} justifyContent="flex-end">
+              <FilterBar
+                tags={allTags}
+                selectedTags={selectedTags}
+                searchQuery={searchQuery}
+                isSearching={isSearching}
+                onSearchChange={setSearchQuery}
+                onSearchSubmit={handleSearchSubmit}
+              />
+            </Box>
           </Box>
+
+          {/* Right pane - preview */}
+          <Preview session={selectedSession} width={previewWidth} />
         </Box>
-        
-        {/* Right pane - preview */}
-        <Preview session={selectedSession} width={previewWidth} />
+
+        {/* Footer */}
+        <Keybindings isSearching={isSearching} />
       </Box>
-      
-      {/* Footer */}
-      <Keybindings isSearching={isSearching} />
-    </Box>
+    </ThemeProvider>
   );
 }
