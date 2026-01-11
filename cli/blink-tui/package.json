@@ -1,0 +1,29 @@
+{
+  "name": "blink-tui",
+  "version": "0.1.0",
+  "description": "Session browser TUI for Blink",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "blink-tui": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.tsx",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "date-fns": "^3.0.0",
+    "gray-matter": "^4.0.3",
+    "ink": "^4.4.1",
+    "ink-text-input": "^5.0.1",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

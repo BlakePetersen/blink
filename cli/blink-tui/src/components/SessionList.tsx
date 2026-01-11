@@ -1,0 +1,77 @@
+// ABOUTME: Left pane component showing session groups and items
+// ABOUTME: Handles selection state and keyboard navigation
+
+import React from 'react';
+import { Box, Text } from 'ink';
+import { formatDistanceToNow } from 'date-fns';
+import { SessionGroup, Session } from '../lib/types.js';
+
+interface Props {
+  groups: SessionGroup[];
+  selectedIndex: number;
+  width: number;
+}
+
+export function SessionList({ groups, selectedIndex, width }: Props) {
+  // Flatten sessions with group context for index calculation
+  let currentIndex = 0;
+  
+  return (
+    <Box flexDirection="column" width={width}>
+      {groups.map((group, groupIdx) => (
+        <Box key={groupIdx} flexDirection="column" marginBottom={1}>
+          {/* Group header */}
+          <Text color="magenta" dimColor>
+            {group.icon} {group.label}
+          </Text>
+          
+          {/* Sessions in group */}
+          {group.sessions.map((session, sessionIdx) => {
+            const isSelected = currentIndex === selectedIndex;
+            const itemIndex = currentIndex;
+            currentIndex++;
+            
+            const timeAgo = formatDistanceToNow(session.created, { addSuffix: false });
+            const title = session.title.length > width - 8 
+              ? session.title.slice(0, width - 11) + '...'
+              : session.title;
+            
+            return (
+              <Box key={session.path} paddingLeft={2}>
+                <Text
+                  color={isSelected ? 'white' : undefined}
+                  backgroundColor={isSelected ? 'magenta' : undefined}
+                  bold={isSelected}
+                >
+                  {isSelected ? '● ' : '  '}
+                  {title}
+                </Text>
+              </Box>
+            );
+          })}
+        </Box>
+      ))}
+      
+      {groups.length === 0 && (
+        <Box paddingLeft={2}>
+          <Text dimColor>No sessions found</Text>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+export function getTotalSessions(groups: SessionGroup[]): number {
+  return groups.reduce((sum, g) => sum + g.sessions.length, 0);
+}
+
+export function getSessionAtIndex(groups: SessionGroup[], index: number): Session | null {
+  let currentIndex = 0;
+  for (const group of groups) {
+    for (const session of group.sessions) {
+      if (currentIndex === index) return session;
+      currentIndex++;
+    }
+  }
+  return null;
+}
