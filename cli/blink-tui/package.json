@@ -5,7 +5,8 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "blink-tui": "dist/index.js"
+    "blink-tui": "dist/index.js",
+    "blink-settings": "dist/settings-index.js"
   },
   "scripts": {
     "build": "tsc",

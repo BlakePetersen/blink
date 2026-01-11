@@ -47,7 +47,6 @@ export function SessionList({ groups, selectedIndex, width }: Props) {
           {/* Sessions in group */}
           {group.sessions.map((session, sessionIdx) => {
             const isSelected = currentIndex === selectedIndex;
-            const itemIndex = currentIndex;
             currentIndex++;
 
             const timeAgo = formatDistanceToNow(session.created, { addSuffix: false });
