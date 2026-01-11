@@ -1,17 +1,21 @@
 // ABOUTME: Main App component for Blink TUI
-// ABOUTME: Manages state, keyboard input, and overall layout
+// ABOUTME: Manages state, keyboard input, and responsive layout
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { Header } from './components/Header.js';
+import { ThemeProvider } from './lib/theme.js';
 import { SessionList, getTotalSessions, getSessionAtIndex } from './components/SessionList.js';
 import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
 import { Keybindings } from './components/Keybindings.js';
+import { Divider } from './components/Divider.js';
 import { loadAllSessions, filterSessions, getAllTags, deleteSession, loadFixtureSessions } from './lib/sessions.js';
 import { SessionGroup, Session } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
+import { getLayoutMode, calculatePaneWidths, getHeaderSize } from './lib/layout.js';
+import { HEADER_HEIGHTS } from './lib/ascii-art.js';
 
 interface Props {
   cwd: string;
@@ -36,17 +40,32 @@ export function App({ cwd, onSelect }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
-  
+  // Fixed values until drag-to-resize is implemented
+  const splitRatio = 0.4;
+  const isDragging = false;
+
   // Derived state
   const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
   const allTags = getAllTags(allGroups);
   const totalSessions = getTotalSessions(filteredGroups);
   const selectedSession = getSessionAtIndex(filteredGroups, selectedIndex);
-  
+
   // Layout calculations
-  const listWidth = Math.floor(width * 0.4);
-  const previewWidth = width - listWidth - 3; // 3 for border
-  
+  const layoutMode = getLayoutMode(width);
+  const paneWidths = calculatePaneWidths(width, layoutMode, splitRatio);
+  const isStacked = layoutMode === 'stacked';
+
+  // Calculate content height (total - header - filter bar - keybindings)
+  const headerSize = getHeaderSize(width);
+  const headerHeight = HEADER_HEIGHTS[headerSize] + 1; // +1 for margin
+  const filterBarHeight = 1;
+  const keybindingsHeight = 1;
+  const contentHeight = Math.max(1, height - headerHeight - filterBarHeight - keybindingsHeight - 1);
+
+  // In stacked mode, split content height between list and preview
+  const listHeight = isStacked ? Math.floor(contentHeight * 0.5) : contentHeight;
+  const previewHeight = isStacked ? contentHeight - listHeight : contentHeight;
+
   // Keyboard handling
   useInput((input, key) => {
     // Handle delete confirmation
@@ -63,7 +82,7 @@ export function App({ cwd, onSelect }: Props) {
       }
       return;
     }
-    
+
     // Handle search mode
     if (isSearching) {
       if (key.escape) {
@@ -72,7 +91,7 @@ export function App({ cwd, onSelect }: Props) {
       }
       return; // TextInput handles other keys
     }
-    
+
     // Normal mode
     if (key.upArrow || input === 'k') {
       setSelectedIndex(i => Math.max(0, i - 1));
@@ -119,63 +138,84 @@ export function App({ cwd, onSelect }: Props) {
       exit();
     }
   });
-  
+
   // Handle search submit
   const handleSearchSubmit = () => {
     setIsSearching(false);
     setSelectedIndex(0);
   };
-  
+
   // Delete confirmation overlay
   if (confirmDelete) {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text color="red" bold>Delete session?</Text>
-        <Text>{confirmDelete.title}</Text>
-        <Text dimColor>{confirmDelete.path}</Text>
-        <Box marginTop={1}>
-          <Text>Press </Text>
-          <Text color="red" bold>y</Text>
-          <Text> to confirm, any other key to cancel</Text>
+      <ThemeProvider>
+        <Box flexDirection="column" padding={1}>
+          <Text color="red" bold>Delete session?</Text>
+          <Text>{confirmDelete.title}</Text>
+          <Text dimColor>{confirmDelete.path}</Text>
+          <Box marginTop={1}>
+            <Text>Press </Text>
+            <Text color="red" bold>y</Text>
+            <Text> to confirm, any other key to cancel</Text>
+          </Box>
         </Box>
-      </Box>
+      </ThemeProvider>
     );
   }
-  
+
   return (
-    <Box flexDirection="column" width={width} height={height}>
-      {/* Header */}
-      <Header />
-      
-      {/* Main content */}
-      <Box flexGrow={1}>
-        {/* Left pane - session list */}
-        <Box flexDirection="column" width={listWidth} borderStyle="single" borderRight>
+    <ThemeProvider>
+      <Box flexDirection="column" width={width} height={height}>
+        {/* Header */}
+        <Header width={width} />
+
+        {/* Filter bar - full width below header */}
+        <FilterBar
+          tags={allTags}
+          selectedTags={selectedTags}
+          searchQuery={searchQuery}
+          isSearching={isSearching}
+          onSearchChange={setSearchQuery}
+          onSearchSubmit={handleSearchSubmit}
+          width={width}
+        />
+
+        {/* Main content */}
+        <Box flexDirection={isStacked ? 'column' : 'row'} flexGrow={1}>
+          {/* Session list */}
           <SessionList
             groups={filteredGroups}
             selectedIndex={selectedIndex}
-            width={listWidth - 2}
+            width={paneWidths.list}
+            height={listHeight}
           />
-          
-          {/* Filter bar at bottom of left pane */}
-          <Box flexGrow={1} justifyContent="flex-end">
-            <FilterBar
-              tags={allTags}
-              selectedTags={selectedTags}
-              searchQuery={searchQuery}
-              isSearching={isSearching}
-              onSearchChange={setSearchQuery}
-              onSearchSubmit={handleSearchSubmit}
+
+          {/* Divider (side-by-side only) */}
+          {!isStacked && (
+            <Divider
+              height={contentHeight}
+              isDragging={isDragging}
+              splitPercent={Math.round(splitRatio * 100)}
             />
-          </Box>
+          )}
+
+          {/* Preview */}
+          <Preview
+            session={selectedSession}
+            width={paneWidths.preview}
+            height={previewHeight}
+          />
         </Box>
-        
-        {/* Right pane - preview */}
-        <Preview session={selectedSession} width={previewWidth} />
+
+        {/* Footer */}
+        <Keybindings
+          isSearching={isSearching}
+          isDeleting={!!confirmDelete}
+          currentIndex={selectedIndex}
+          totalCount={totalSessions}
+          width={width}
+        />
       </Box>
-      
-      {/* Footer */}
-      <Keybindings isSearching={isSearching} />
-    </Box>
+    </ThemeProvider>
   );
 }
