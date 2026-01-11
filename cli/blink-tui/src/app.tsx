@@ -146,7 +146,7 @@ export function App({ cwd, onSelect }: Props) {
           />
           
           {/* Filter bar at bottom of left pane */}
-          <Box marginTop="auto">
+          <Box flexGrow={1} justifyContent="flex-end">
             <FilterBar
               tags={allTags}
               selectedTags={selectedTags}
