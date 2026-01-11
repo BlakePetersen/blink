@@ -177,9 +177,13 @@ export function filterSessions(
 export function loadFixtureSessions(fixturesDir: string): Session[] {
   if (!existsSync(fixturesDir)) return [];
 
-  const files = readdirSync(fixturesDir).filter(f => f.endsWith('.md'));
-  return files
-    .map(f => parseSession(join(fixturesDir, f)))
-    .filter((s): s is Session => s !== null)
-    .sort((a, b) => b.created.getTime() - a.created.getTime());
+  try {
+    const files = readdirSync(fixturesDir).filter(f => f.endsWith('.md'));
+    return files
+      .map(f => parseSession(join(fixturesDir, f)))
+      .filter((s): s is Session => s !== null)
+      .sort((a, b) => b.created.getTime() - a.created.getTime());
+  } catch {
+    return [];
+  }
 }
