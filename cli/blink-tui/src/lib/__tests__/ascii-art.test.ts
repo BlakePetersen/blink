@@ -7,23 +7,23 @@ import { getHeaderArt, getHeaderLines, HEADER_HEIGHTS } from '../ascii-art.js';
 describe('ascii-art', () => {
   describe('HEADER_HEIGHTS', () => {
     it('defines heights for each size', () => {
-      expect(HEADER_HEIGHTS.full).toBe(6);
-      expect(HEADER_HEIGHTS.medium).toBe(3);
+      expect(HEADER_HEIGHTS.full).toBe(3);
+      expect(HEADER_HEIGHTS.medium).toBe(2);
       expect(HEADER_HEIGHTS.minimal).toBe(1);
     });
   });
 
   describe('getHeaderArt', () => {
-    it('returns full header with block characters', () => {
+    it('returns full header with box-drawing characters', () => {
       const art = getHeaderArt('full');
-      expect(art).toContain('█'); // block characters
-      expect(art).toContain('╔'); // box drawing
+      expect(art).toContain('┏'); // box drawing
+      expect(art).toContain('━'); // horizontal line
     });
 
-    it('returns medium header with condensed blocks', () => {
+    it('returns medium header with box-drawing characters', () => {
       const art = getHeaderArt('medium');
-      expect(art).toContain('█');
-      expect(art).toContain('▀');
+      expect(art).toContain('┣');
+      expect(art).toContain('┗');
     });
 
     it('returns minimal single-line header', () => {

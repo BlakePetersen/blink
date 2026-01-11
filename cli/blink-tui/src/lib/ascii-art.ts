@@ -2,30 +2,26 @@
 // ABOUTME: Brutalist style - bold, stark, Berlin nightclub aesthetic
 
 export const HEADER_HEIGHTS = {
-  full: 6,
-  medium: 3,
+  full: 3,
+  medium: 2,
   minimal: 1,
 } as const;
 
 export type HeaderSize = keyof typeof HEADER_HEIGHTS;
 
-// Brutalist block letters - heavy, industrial
+// Brutalist monospace - pure geometry, box-drawing characters
 const HEADER_FULL = `
-██████╗ ██╗     ██╗███╗   ██╗██╗  ██╗
-██╔══██╗██║     ██║████╗  ██║██║ ██╔╝
-██████╔╝██║     ██║██╔██╗ ██║█████╔╝
-██╔══██╗██║     ██║██║╚██╗██║██╔═██╗
-██████╔╝███████╗██║██║ ╚████║██║  ██╗
-╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝`.trim();
+┏━┓  ┃    ┳ ┏┓┓ ┃ ┃
+┣━┫  ┃    ┃ ┃┗┫ ┣━┫
+┗━┛  ┗━━  ┻ ┛ ┗ ┻ ┻`.trim();
 
 // Condensed for medium width
 const HEADER_MEDIUM = `
-█▀▀▄ █   █ █▄ █ █ █
-█▀▀▄ █   █ █ ▀█ █▀▄
-▀▀▀  ▀▀▀ ▀ ▀  ▀ ▀ ▀`.trim();
+┣━┓ ┃  ┃ ┃┃┃ ┃┏
+┗━┛ ┗━ ┻ ┛ ┗ ┻┛`.trim();
 
-// Single line - just the word
-const HEADER_MINIMAL = `▌BLINK▐`;
+// Single line - stark
+const HEADER_MINIMAL = `┃BLINK┃`;
 
 export function getHeaderArt(size: HeaderSize): string {
   switch (size) {
