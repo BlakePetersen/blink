@@ -57,6 +57,23 @@ function rgbToHex(r: number, g: number, b: number): string {
   }).join('');
 }
 
+export function brightenColor(hex: string, amount: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  const newR = Math.min(255, Math.round(r + (255 - r) * amount));
+  const newG = Math.min(255, Math.round(g + (255 - g) * amount));
+  const newB = Math.min(255, Math.round(b + (255 - b) * amount));
+  return rgbToHex(newR, newG, newB);
+}
+
+export function adjustBrightness(hex: string, multiplier: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHex(
+    Math.round(r * multiplier),
+    Math.round(g * multiplier),
+    Math.round(b * multiplier)
+  );
+}
+
 export interface AnimationState {
   cyclePosition: number;
   wavePosition: number;

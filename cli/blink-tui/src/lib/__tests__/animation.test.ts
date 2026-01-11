@@ -8,7 +8,9 @@ import {
   calculateBreathPhase,
   shouldShimmer,
   calculateAnimationState,
-  interpolateColor
+  interpolateColor,
+  brightenColor,
+  adjustBrightness
 } from '../animation.js';
 
 describe('animation', () => {
@@ -103,6 +105,48 @@ describe('animation', () => {
     it('includes elapsed time in state', () => {
       const state = calculateAnimationState(1234);
       expect(state.elapsed).toBe(1234);
+    });
+  });
+
+  describe('brightenColor', () => {
+    it('returns same color with amount 0', () => {
+      expect(brightenColor('#808080', 0)).toBe('#808080');
+    });
+
+    it('returns white with amount 1', () => {
+      expect(brightenColor('#000000', 1)).toBe('#ffffff');
+    });
+
+    it('brightens color proportionally', () => {
+      // #000000 brightened by 0.5 should give #808080
+      expect(brightenColor('#000000', 0.5)).toBe('#808080');
+    });
+
+    it('handles already bright colors', () => {
+      // Should not exceed #ffffff
+      const result = brightenColor('#ffffff', 0.5);
+      expect(result).toBe('#ffffff');
+    });
+  });
+
+  describe('adjustBrightness', () => {
+    it('returns same color with multiplier 1', () => {
+      expect(adjustBrightness('#808080', 1)).toBe('#808080');
+    });
+
+    it('returns black with multiplier 0', () => {
+      expect(adjustBrightness('#ffffff', 0)).toBe('#000000');
+    });
+
+    it('darkens color with multiplier < 1', () => {
+      const result = adjustBrightness('#ffffff', 0.5);
+      expect(result).toBe('#808080');
+    });
+
+    it('clamps values to valid range', () => {
+      // Should not exceed #ffffff even with multiplier > 1
+      const result = adjustBrightness('#808080', 3);
+      expect(result).toBe('#ffffff');
     });
   });
 });
