@@ -5,12 +5,14 @@
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "blink-tui": "dist/index.js"
+    "blink-tui": "dist/index.js",
+    "blink-settings": "dist/settings-index.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "BLINK_DEV=1 tsx src/index.tsx",
     "start": "node dist/index.js",
+    "settings": "tsx src/settings-index.tsx",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
