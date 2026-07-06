@@ -95,8 +95,6 @@ if [ -n "$LATEST" ] && [ -f "$LATEST" ]; then
 EOF
 else
     debug_log "No snapshot found, clean start"
-    # No snapshot - output simple success
-    echo "Success"
 fi
 
 exit 0
