@@ -57,7 +57,7 @@ echo "## Working On" >> "$SNAPSHOT_FILE"
 echo "Test content" >> "$SNAPSHOT_FILE"
 
 OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
-if [[ "$OUTPUT" == *"BLINK SESSION RESUME"* ]] && [[ "$OUTPUT" == *"Test Session"* ]] && [[ "$OUTPUT" == *"Test content"* ]]; then
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Test Session"* ]] && [[ "$OUTPUT" == *"Test content"* ]]; then
   pass "Outputs full resume context with snapshot content"
 else
   fail "Expected resume context with snapshot content, got: $OUTPUT"
@@ -78,7 +78,7 @@ echo "title: Newer" >> "$NEWER_FILE"
 echo "---" >> "$NEWER_FILE"
 
 OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
-if [[ "$OUTPUT" == *"BLINK SESSION RESUME"* ]] && [[ "$OUTPUT" == *"Newer"* ]] && [[ "$OUTPUT" != *"Older"* ]]; then
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Newer"* ]] && [[ "$OUTPUT" != *"Older"* ]]; then
   pass "Outputs most recent file by modification time"
 else
   fail "Expected resume context with 'Newer' but not 'Older', got: $OUTPUT"
@@ -94,7 +94,7 @@ echo "title: Global Test" >> "$GLOBAL_FILE"
 echo "---" >> "$GLOBAL_FILE"
 
 OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
-if [[ "$OUTPUT" == *"BLINK SESSION RESUME"* ]] && [[ "$OUTPUT" == *"Global Test"* ]]; then
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Global Test"* ]]; then
   pass "Falls back to global sessions when no project sessions"
 else
   fail "Expected resume context with 'Global Test', got: $OUTPUT"
