@@ -105,19 +105,19 @@ else
   fail "Expected valid JSON output, got: $OUTPUT"
 fi
 
-# Test 5: Global sessions fallback (when no project sessions)
+# Test 5: Global sessions fallback (when no project sessions), scoped to project
 # HOME is sandboxed to "$TEST_DIR/home", so the global path lives inside TEST_DIR.
-echo "Test 5: Global sessions fallback"
+# The global fallback only surfaces snapshots whose project: matches cwd (#42).
+echo "Test 5: Global sessions fallback (project-scoped)"
 rm -rf "$TEST_DIR/.claude"
+cd "$TEST_DIR"
 mkdir -p "$HOME/.claude/sessions/restarts"
 GLOBAL_FILE="$HOME/.claude/sessions/restarts/test-global-2025-01-10T18-00-00.md"
-echo "---" > "$GLOBAL_FILE"
-echo "title: Global Test" >> "$GLOBAL_FILE"
-echo "---" >> "$GLOBAL_FILE"
+printf -- '---\ntitle: Global Test\nproject: %s\n---\n' "$TEST_DIR" > "$GLOBAL_FILE"
 
 OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
 if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Global Test"* ]]; then
-  pass "Falls back to global sessions when no project sessions"
+  pass "Falls back to global sessions matching this project when no project sessions"
 else
   fail "Expected resume context with 'Global Test', got: $OUTPUT"
 fi
@@ -330,6 +330,56 @@ if [[ "$OUTPUT" == *"Project Wins"* ]] && [[ "$OUTPUT" != *"Global Loses"* ]]; t
   pass "Project snapshot preferred over global when both exist"
 else
   fail "Expected 'Project Wins' not 'Global Loses', got: $OUTPUT"
+fi
+
+# Test 16: A global snapshot from ANOTHER project is NOT surfaced (#42)
+echo "Test 16: Global snapshot from another project is not leaked"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$HOME/.claude/sessions/restarts"
+OTHER_FILE="$HOME/.claude/sessions/restarts/2025-01-11T15-00-00.md"
+printf -- '---\ntitle: Someone Elses Project\nproject: /some/other/project\n---\n' > "$OTHER_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [ -z "$OUTPUT" ]; then
+  pass "Global snapshot for a different project is not injected"
+else
+  fail "Expected no output for a non-matching global snapshot, got: $OUTPUT"
+fi
+
+# A global snapshot that DOES match the current project is still surfaced.
+MATCH_FILE="$HOME/.claude/sessions/restarts/2025-01-11T16-00-00.md"
+printf -- '---\ntitle: Mine Globally\nproject: %s\n---\n' "$TEST_DIR" > "$MATCH_FILE"
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Mine Globally"* ]] && [[ "$OUTPUT" != *"Someone Elses Project"* ]]; then
+  pass "Global snapshot matching this project is surfaced; other project stays hidden"
+else
+  fail "Expected 'Mine Globally' only, got: $OUTPUT"
+fi
+
+# Test 17: A snapshot with arbitrary C0 control chars still yields valid JSON (#41)
+echo "Test 17: Control characters produce valid JSON"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+CTRL_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T17-00-00.md"
+# Embed a literal ESC (0x1b), bell (0x07) and vertical tab (0x0b) in title/body.
+printf -- '---\ntitle: Esc\033Bell\007Here\n---\nBody with\013vertical tab and \033[31m color code\n' > "$CTRL_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]]; then
+  pass "Emits resume context for a control-char snapshot"
+else
+  fail "Expected resume context for control-char snapshot, got: $OUTPUT"
+fi
+if [ "$HAS_JQ" = true ]; then
+  if printf '%s' "$OUTPUT" | jq . >/dev/null 2>&1; then
+    pass "Control-char snapshot produces valid JSON"
+  else
+    fail "Hook output with control chars is not valid JSON: $OUTPUT"
+  fi
+else
+  echo "  (skipping JSON assertion: jq not installed)"
 fi
 
 echo ""
