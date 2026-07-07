@@ -4,17 +4,18 @@
 import React, { useMemo, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import { formatDistanceToNow } from 'date-fns';
-import { Session } from '../lib/types.js';
+import { Session, ParseError } from '../lib/types.js';
 import { useTheme } from '../lib/theme.js';
 import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation.js';
 
 interface Props {
   session: Session | null;
+  parseError?: ParseError | null;
   width: number;
   height?: number;
 }
 
-export function Preview({ session, width, height }: Props) {
+export function Preview({ session, parseError, width, height }: Props) {
   const { settings, animationState, reducedMotion } = useTheme();
   const { colors, animation } = settings;
   const { cyclePosition, elapsed } = animationState;
@@ -37,6 +38,27 @@ export function Preview({ session, width, height }: Props) {
     }
     return baseColor;
   }, [colors.accent3, animation.shimmer, animation.speed, elapsed, reducedMotion]);
+
+  if (parseError) {
+    const name = parseError.file.split('/').pop() ?? parseError.file;
+    return (
+      <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
+        <Text color="red" bold>
+          ⚠ Could not read file
+        </Text>
+        <Box marginTop={1}>
+          <Text>{name}</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>{parseError.file}</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          <Text color="gray">reason</Text>
+          <Text color="red">{parseError.reason}</Text>
+        </Box>
+      </Box>
+    );
+  }
 
   if (!session) {
     return (

@@ -3,9 +3,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
 import { tmpdir } from 'os';
-import { loadFixtureSessions, parseSession } from '../sessions.js';
+import { join } from 'path';
+import { loadFixtureSessions, loadSessionsFromDir, parseSession } from '../sessions.js';
 import { FIXTURES_DIR } from '../__fixtures__/index.js';
 
 declare global {
@@ -39,11 +39,12 @@ describe('parseSession frontmatter security', () => {
     const file = join(dir, 'malicious.md');
     writeFileSync(file, malicious, 'utf-8');
 
-    // Must not throw uncaught; parseSession swallows errors and returns null.
+    // Must not throw uncaught; parseSession swallows the error into a failed
+    // ParseResult rather than executing the payload.
     const result = parseSession(file);
 
     expect(globalThis.__blink_rce_probe).toBe(false);
-    expect(result).toBeNull();
+    expect(result.ok).toBe(false);
   });
 
   it('still parses normal YAML frontmatter', () => {
@@ -62,9 +63,11 @@ describe('parseSession frontmatter security', () => {
 
     const result = parseSession(file);
 
-    expect(result).not.toBeNull();
-    expect(result?.title).toBe('Real Session');
-    expect(result?.tags).toEqual(['alpha', 'beta']);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.session.title).toBe('Real Session');
+      expect(result.session.tags).toEqual(['alpha', 'beta']);
+    }
   });
 });
 
@@ -93,6 +96,61 @@ describe('loadFixtureSessions', () => {
     const specialSession = sessions.find(s => s.title.includes('quotes'));
     expect(specialSession).toBeDefined();
     expect(specialSession?.title).toContain('"quotes"');
+  });
+});
+
+describe('loadSessionsFromDir parse errors', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'blink-sessions-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('loads valid sessions while collecting parse errors for malformed files', () => {
+    writeFileSync(
+      join(dir, 'good.md'),
+      '---\ntitle: Good Session\ncreated: 2026-01-01\n---\n## Working On\nStuff\n'
+    );
+    writeFileSync(
+      join(dir, 'bad.md'),
+      '---\ntitle: "unterminated\ncreated: 2026-01-01\n---\nbody\n'
+    );
+
+    const { sessions, parseErrors } = loadSessionsFromDir(dir, 'saved');
+
+    expect(sessions.map(s => s.title)).toContain('Good Session');
+    expect(sessions).toHaveLength(1);
+    expect(parseErrors).toHaveLength(1);
+    expect(parseErrors[0].file).toContain('bad.md');
+    expect(parseErrors[0].reason).toBeTruthy();
+  });
+
+  it('returns empty results for a directory that does not exist', () => {
+    const { sessions, parseErrors } = loadSessionsFromDir(
+      join(dir, 'nope'),
+      'saved'
+    );
+    expect(sessions).toEqual([]);
+    expect(parseErrors).toEqual([]);
+  });
+
+  it('reports no parse errors when all files are valid', () => {
+    writeFileSync(
+      join(dir, 'a.md'),
+      '---\ntitle: A\ncreated: 2026-01-02\n---\n## Status\nok\n'
+    );
+    writeFileSync(
+      join(dir, 'b.md'),
+      '---\ntitle: B\ncreated: 2026-01-03\n---\n## Status\nok\n'
+    );
+
+    const { sessions, parseErrors } = loadSessionsFromDir(dir, 'saved');
+    expect(sessions).toHaveLength(2);
+    expect(parseErrors).toEqual([]);
   });
 });
 

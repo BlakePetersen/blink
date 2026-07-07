@@ -5,13 +5,13 @@ import React, { useState } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { Header } from './components/Header.js';
 import { ThemeProvider } from './lib/theme.js';
-import { SessionList, getTotalSessions, getSessionAtIndex } from './components/SessionList.js';
+import { SessionList, buildListItems } from './components/SessionList.js';
 import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
 import { Keybindings } from './components/Keybindings.js';
 import { Divider } from './components/Divider.js';
 import { loadAllSessions, filterSessions, getAllTags, deleteSession, loadFixtureSessions } from './lib/sessions.js';
-import { SessionGroup, Session } from './lib/types.js';
+import { SessionGroup, Session, ParseError } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
 import { getLayoutMode, calculatePaneWidths, getHeaderSize } from './lib/layout.js';
@@ -31,10 +31,11 @@ export function App({ cwd, onSelect }: Props) {
   const { width, height } = useTerminalSize(stdout);
 
   // Load sessions synchronously on first render to avoid race with crash
-  const initialGroups = React.useMemo(() => loadAllSessions(cwd), [cwd]);
+  const initial = React.useMemo(() => loadAllSessions(cwd), [cwd]);
 
   // State
-  const [allGroups, setAllGroups] = useState<SessionGroup[]>(initialGroups);
+  const [allGroups, setAllGroups] = useState<SessionGroup[]>(initial.groups);
+  const [parseErrors, setParseErrors] = useState<ParseError[]>(initial.parseErrors);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -47,8 +48,13 @@ export function App({ cwd, onSelect }: Props) {
   // Derived state
   const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
   const allTags = getAllTags(allGroups);
-  const totalSessions = getTotalSessions(filteredGroups);
-  const selectedSession = getSessionAtIndex(filteredGroups, selectedIndex);
+  // Parse errors are always shown (not subject to search/tag filtering) so
+  // unreadable files never silently disappear.
+  const listItems = buildListItems(filteredGroups, parseErrors);
+  const totalSessions = listItems.length;
+  const selectedItem = listItems[selectedIndex] ?? null;
+  const selectedSession = selectedItem?.kind === 'session' ? selectedItem.session : null;
+  const selectedError = selectedItem?.kind === 'error' ? selectedItem.error : null;
 
   // Layout calculations
   const layoutMode = getLayoutMode(width);
@@ -72,7 +78,9 @@ export function App({ cwd, onSelect }: Props) {
     if (confirmDelete) {
       if (input === 'y' || input === 'Y') {
         deleteSession(confirmDelete);
-        setAllGroups(loadAllSessions(cwd));
+        const reloaded = loadAllSessions(cwd);
+        setAllGroups(reloaded.groups);
+        setParseErrors(reloaded.parseErrors);
         setConfirmDelete(null);
         if (selectedIndex >= totalSessions - 1) {
           setSelectedIndex(Math.max(0, selectedIndex - 1));
@@ -133,6 +141,7 @@ export function App({ cwd, onSelect }: Props) {
         isGlobal: false,
       };
       setAllGroups([fixtureGroup]);
+      setParseErrors([]);
       setSelectedIndex(0);
     } else if (input === 'q' || key.escape) {
       exit();
@@ -185,6 +194,7 @@ export function App({ cwd, onSelect }: Props) {
           {/* Session list */}
           <SessionList
             groups={filteredGroups}
+            parseErrors={parseErrors}
             selectedIndex={selectedIndex}
             width={paneWidths.list}
             height={listHeight}
@@ -202,6 +212,7 @@ export function App({ cwd, onSelect }: Props) {
           {/* Preview */}
           <Preview
             session={selectedSession}
+            parseError={selectedError}
             width={paneWidths.preview}
             height={previewHeight}
           />
