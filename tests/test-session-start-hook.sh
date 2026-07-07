@@ -22,6 +22,14 @@ NC='\033[0m' # No Color
 pass() { echo -e "${GREEN}PASS${NC}: $1"; }
 fail() { echo -e "${RED}FAIL${NC}: $1"; exit 1; }
 
+# jq is used to assert the hook emits valid JSON. Skip that assertion gracefully
+# when jq is unavailable so the suite still runs in minimal environments.
+if command -v jq >/dev/null 2>&1; then
+  HAS_JQ=true
+else
+  HAS_JQ=false
+fi
+
 cleanup() {
   cd "$ORIGINAL_DIR"
   rm -rf "$TEST_DIR"
@@ -68,8 +76,8 @@ else
   fail "Expected resume context with snapshot content, got: $OUTPUT"
 fi
 
-# Test 4: Multiple restart files - should output most recent (by modification time)
-echo "Test 4: Multiple restart files - most recent by mtime"
+# Test 4: Multiple restart files - newest featured, older ones still surfaced (#59)
+echo "Test 4: Multiple restart files - newest featured, others surfaced in picker"
 OLDER_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-10T12-00-00.md"
 NEWER_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-10T16-00-00.md"
 
@@ -83,10 +91,18 @@ echo "title: Newer" >> "$NEWER_FILE"
 echo "---" >> "$NEWER_FILE"
 
 OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
-if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Newer"* ]] && [[ "$OUTPUT" != *"Older"* ]]; then
-  pass "Outputs most recent file by modification time"
+# Newest is the featured (primary) snapshot; older ones now appear in the picker list.
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Title: Newer"* ]] && [[ "$OUTPUT" == *"Older"* ]]; then
+  pass "Features newest snapshot and surfaces older ones in the picker"
 else
-  fail "Expected resume context with 'Newer' but not 'Older', got: $OUTPUT"
+  fail "Expected 'Title: Newer' featured and 'Older' listed, got: $OUTPUT"
+fi
+
+# Output must be valid JSON
+if echo "$OUTPUT" | jq . >/dev/null 2>&1; then
+  pass "Multi-snapshot output is valid JSON"
+else
+  fail "Expected valid JSON output, got: $OUTPUT"
 fi
 
 # Test 5: Global sessions fallback (when no project sessions)
@@ -176,6 +192,144 @@ if [[ "$OUTPUT" == *"Fallback Newest"* ]] && [ ! -f "$MARKER" ]; then
 else
   MARKER_STATE=$([ -f "$MARKER" ] && echo exists || echo cleared)
   fail "Expected fallback to 'Fallback Newest' with marker cleared ($MARKER_STATE), got: $OUTPUT"
+fi
+
+# Test 10: resumePrompt=false in settings suppresses the prompt (#62)
+echo "Test 10: resumePrompt=false suppresses output"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$HOME/.claude/plugins/blink"
+printf '{"behavior":{"resumePrompt":false}}' > "$HOME/.claude/plugins/blink/settings.json"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+printf -- '---\ntitle: Should Be Suppressed\n---\n' > "$TEST_DIR/.claude/sessions/restarts/2025-01-11T11-00-00.md"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [ -z "$OUTPUT" ]; then
+  pass "resumePrompt=false suppresses the startup prompt"
+else
+  fail "Expected no output when resumePrompt is false, got: $OUTPUT"
+fi
+
+# Re-enabling resume restores the prompt.
+printf '{"behavior":{"resumePrompt":true}}' > "$HOME/.claude/plugins/blink/settings.json"
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Should Be Suppressed"* ]]; then
+  pass "resumePrompt=true restores the startup prompt"
+else
+  fail "Expected prompt when resumePrompt is true, got: $OUTPUT"
+fi
+rm -rf "$HOME/.claude/plugins"
+
+# Test 11: compact source injects minimal content, not the full snapshot (#64)
+echo "Test 11: compact source is minimal"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+COMPACT_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T12-00-00.md"
+printf -- '---\ntitle: Compact Session\n---\n## Working On\nUNIQUE_BODY_MARKER\n' > "$COMPACT_FILE"
+
+OUTPUT=$(printf '{"source":"compact"}' | "$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Compact Session"* ]] && [[ "$OUTPUT" != *"UNIQUE_BODY_MARKER"* ]]; then
+  pass "compact source references snapshot without injecting full body"
+else
+  fail "Expected minimal injection (title, no body) for compact, got: $OUTPUT"
+fi
+if echo "$OUTPUT" | jq . >/dev/null 2>&1; then
+  pass "compact output is valid JSON"
+else
+  fail "Expected valid JSON output for compact, got: $OUTPUT"
+fi
+
+# Startup (no stdin source) still injects the full body.
+OUTPUT=$("$HOOK_SCRIPT" 2>&1 < /dev/null) || true
+if [[ "$OUTPUT" == *"UNIQUE_BODY_MARKER"* ]]; then
+  pass "startup source injects full snapshot body"
+else
+  fail "Expected full body on startup, got: $OUTPUT"
+fi
+
+# Test 12: saved sessions surface in the picker alongside restarts (#59)
+echo "Test 12: saved sessions surface in picker"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts" "$TEST_DIR/.claude/sessions/saved"
+printf -- '---\ntitle: A Saved Milestone\n---\n' > "$TEST_DIR/.claude/sessions/saved/milestone.md"
+sleep 0.1
+printf -- '---\ntitle: Latest Restart\n---\n' > "$TEST_DIR/.claude/sessions/restarts/2025-01-11T13-00-00.md"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Latest Restart"* ]] && [[ "$OUTPUT" == *"A Saved Milestone"* ]]; then
+  pass "Saved sessions are surfaced in the picker alongside restarts"
+else
+  fail "Expected both 'Latest Restart' and 'A Saved Milestone', got: $OUTPUT"
+fi
+
+# Test 13: Snapshot with no/corrupt frontmatter still yields valid output
+echo "Test 13: Missing/corrupt frontmatter"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+CORRUPT_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T11-00-00.md"
+# No frontmatter delimiters and no title: field at all.
+printf 'just some body text with no frontmatter\nsecond line\n' > "$CORRUPT_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"just some body text"* ]]; then
+  pass "Emits resume context even without frontmatter"
+else
+  fail "Expected resume context for frontmatter-less snapshot, got: $OUTPUT"
+fi
+if [ "$HAS_JQ" = true ]; then
+  if echo "$OUTPUT" | jq . >/dev/null 2>&1; then
+    pass "Frontmatter-less snapshot produces valid JSON"
+  else
+    fail "Hook output is not valid JSON: $OUTPUT"
+  fi
+else
+  echo "  (skipping JSON assertion: jq not installed)"
+fi
+
+# Test 14: Title with quotes/backslashes is JSON-escaped into valid output
+echo 'Test 14: Title with quotes/backslashes -> valid JSON'
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+QUOTED_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T12-00-00.md"
+printf -- '---\ntitle: He said "hi" and C:\\path\n---\nBody with a "quote" and a \\backslash\n' > "$QUOTED_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]]; then
+  pass "Emits resume context for quoted/backslashed title"
+else
+  fail "Expected resume context for quoted title, got: $OUTPUT"
+fi
+if [ "$HAS_JQ" = true ]; then
+  if echo "$OUTPUT" | jq . >/dev/null 2>&1; then
+    pass "Quoted/backslashed title produces valid JSON"
+  else
+    fail "Hook output with quotes/backslashes is not valid JSON: $OUTPUT"
+  fi
+else
+  echo "  (skipping JSON assertion: jq not installed)"
+fi
+
+# Test 15: Project sessions take precedence over global when both exist
+echo "Test 15: Project-vs-global precedence"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts" "$HOME/.claude/sessions/restarts"
+PROJECT_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T13-00-00.md"
+GLOBAL_FILE="$HOME/.claude/sessions/restarts/2025-01-11T14-00-00.md"
+printf -- '---\ntitle: Project Wins\n---\n' > "$PROJECT_FILE"
+# Make the global file newer to prove project still wins regardless of mtime.
+sleep 0.1
+printf -- '---\ntitle: Global Loses\n---\n' > "$GLOBAL_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Project Wins"* ]] && [[ "$OUTPUT" != *"Global Loses"* ]]; then
+  pass "Project snapshot preferred over global when both exist"
+else
+  fail "Expected 'Project Wins' not 'Global Loses', got: $OUTPUT"
 fi
 
 echo ""

@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import {
   applyPreset,
   applyThemeToSettings,
+  DEFAULT_BEHAVIOR,
   DEFAULT_SETTINGS,
   loadSettings,
   snapSpeedToBucket,
@@ -30,6 +31,26 @@ describe('settings', () => {
 
     it('has balanced animation speed', () => {
       expect(DEFAULT_SETTINGS.animation.speed).toBe(250);
+    });
+
+    it('enables the resume prompt by default', () => {
+      expect(DEFAULT_SETTINGS.behavior.resumePrompt).toBe(true);
+    });
+
+    it('defaults to project scope', () => {
+      expect(DEFAULT_SETTINGS.behavior.defaultScope).toBe('project');
+    });
+
+    it('has a positive default retention count', () => {
+      expect(DEFAULT_SETTINGS.behavior.retentionCount).toBeGreaterThan(0);
+    });
+  });
+
+  describe('behavior settings', () => {
+    it('every theme preset carries the default behavior', () => {
+      for (const preset of Object.values(THEME_PRESETS)) {
+        expect(preset.behavior).toEqual(DEFAULT_BEHAVIOR);
+      }
     });
   });
 
@@ -184,6 +205,33 @@ describe('settings', () => {
       });
       const result = loadSettings();
       expect(result.animation.speed).toBe(300);
+    });
+
+    it('applies behavior defaults when the behavior block is missing', () => {
+      writeSettings({ theme: 'minimal' });
+      const result = loadSettings();
+      expect(result.behavior).toEqual(DEFAULT_BEHAVIOR);
+    });
+
+    it('preserves valid behavior settings', () => {
+      writeSettings({
+        ...DEFAULT_SETTINGS,
+        behavior: { resumePrompt: false, retentionCount: 25, defaultScope: 'global' },
+      });
+      const result = loadSettings();
+      expect(result.behavior.resumePrompt).toBe(false);
+      expect(result.behavior.retentionCount).toBe(25);
+      expect(result.behavior.defaultScope).toBe('global');
+    });
+
+    it('coerces corrupt behavior fields back to defaults', () => {
+      writeSettings({
+        behavior: { resumePrompt: 'nope', retentionCount: -4, defaultScope: 'sideways' },
+      });
+      const result = loadSettings();
+      expect(result.behavior.resumePrompt).toBe(DEFAULT_BEHAVIOR.resumePrompt);
+      expect(result.behavior.retentionCount).toBe(DEFAULT_BEHAVIOR.retentionCount);
+      expect(result.behavior.defaultScope).toBe(DEFAULT_BEHAVIOR.defaultScope);
     });
   });
 });

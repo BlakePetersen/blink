@@ -7,13 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-06
+
 ### Added
+- Reduced-motion support to disable TUI animations
+- Viewport scrolling for long session lists (height-based windowing)
+- Parse-error surfacing so unreadable session files never silently disappear
 - Dev mode with `BLINK_DEV=1` environment variable
 - Kitchen-sink mock session fixtures for testing
 - `R` keybinding in dev mode to restore fixture data
 - Vitest testing framework for TUI
+- Bash tests wired into CI
 - CLAUDE.md development guidelines
-- CONTRIBUTING.md for open source contributors
+- CONTRIBUTING.md and Code of Conduct for open source contributors
+
+### Fixed
+- Restore flow now closes the loop end-to-end
+- Settings persistence and validation correctness
+- Accessibility rendering in the TUI
+- TUI interaction bugs and terminal-resize handling
+- Degenerate slug generation from all-special-character titles
+- Session-start hook output formatting
+- CI lockfile handling for pnpm 9
+
+### Security
+- Hardened snapshot frontmatter parsing against arbitrary code execution
 
 ## [0.4.0] - 2026-01-10
 
