@@ -5,6 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import {
   Settings,
+  SessionScope,
   THEME_PRESETS,
   DEFAULT_SETTINGS,
   applyThemeToSettings,
@@ -33,6 +34,12 @@ const SPEED_FROM_VALUE = (value: number): SpeedOption => {
 
 const THEME_NAMES = Object.keys(THEME_PRESETS);
 
+const SCOPE_OPTIONS: SessionScope[] = ['project', 'global'];
+const RETENTION_OPTIONS = [5, 10, 20, 50];
+
+const ANIMATION_TOGGLE_IDS = ['reducedMotion', 'cycling', 'shimmer', 'breathing'] as const;
+type AnimationToggleId = (typeof ANIMATION_TOGGLE_IDS)[number];
+
 interface MenuItem {
   type: 'dropdown' | 'toggle' | 'button';
   id: string;
@@ -46,6 +53,9 @@ const MENU_ITEMS: MenuItem[] = [
   { type: 'toggle', id: 'cycling', label: 'Color cycling' },
   { type: 'toggle', id: 'shimmer', label: 'Shimmer' },
   { type: 'toggle', id: 'breathing', label: 'Breathing' },
+  { type: 'toggle', id: 'resumePrompt', label: 'Resume prompt on startup' },
+  { type: 'dropdown', id: 'defaultScope', label: 'Default scope' },
+  { type: 'dropdown', id: 'retentionCount', label: 'Retention (keep N)' },
   { type: 'button', id: 'save', label: 'Save' },
   { type: 'button', id: 'reset', label: 'Reset to defaults' },
   { type: 'button', id: 'cancel', label: 'Cancel' },
@@ -72,6 +82,27 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
     }));
   };
 
+  const updateBehavior = (key: keyof Settings['behavior'], value: boolean | number | SessionScope) => {
+    setSettings(prev => ({
+      ...prev,
+      behavior: { ...prev.behavior, [key]: value },
+    }));
+  };
+
+  const cycleScope = (direction: 1 | -1) => {
+    const currentIndex = SCOPE_OPTIONS.indexOf(settings.behavior.defaultScope);
+    const nextIndex = (currentIndex + direction + SCOPE_OPTIONS.length) % SCOPE_OPTIONS.length;
+    updateBehavior('defaultScope', SCOPE_OPTIONS[nextIndex]);
+  };
+
+  const cycleRetention = (direction: 1 | -1) => {
+    const currentIndex = RETENTION_OPTIONS.indexOf(settings.behavior.retentionCount);
+    // An out-of-list value (currentIndex === -1) steps into the list predictably.
+    const base = currentIndex === -1 ? 0 : currentIndex;
+    const nextIndex = (base + direction + RETENTION_OPTIONS.length) % RETENTION_OPTIONS.length;
+    updateBehavior('retentionCount', RETENTION_OPTIONS[nextIndex]);
+  };
+
   const cycleTheme = (direction: 1 | -1) => {
     const currentIndex = THEME_NAMES.indexOf(settings.theme);
     const nextIndex = (currentIndex + direction + THEME_NAMES.length) % THEME_NAMES.length;
@@ -87,6 +118,15 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
     updateAnimation('speed', SPEED_VALUES[newSpeed]);
   };
 
+  const toggleItem = (id: string) => {
+    if (id === 'resumePrompt') {
+      updateBehavior('resumePrompt', !settings.behavior.resumePrompt);
+      return;
+    }
+    const animationKey = id as AnimationToggleId;
+    updateAnimation(animationKey, !settings.animation[animationKey]);
+  };
+
   useInput((input, key) => {
     const item = MENU_ITEMS[focusIndex];
 
@@ -98,16 +138,19 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
       if (item.type === 'dropdown') {
         if (item.id === 'theme') cycleTheme(-1);
         if (item.id === 'speed') cycleSpeed(-1);
+        if (item.id === 'defaultScope') cycleScope(-1);
+        if (item.id === 'retentionCount') cycleRetention(-1);
       }
     } else if (key.rightArrow) {
       if (item.type === 'dropdown') {
         if (item.id === 'theme') cycleTheme(1);
         if (item.id === 'speed') cycleSpeed(1);
+        if (item.id === 'defaultScope') cycleScope(1);
+        if (item.id === 'retentionCount') cycleRetention(1);
       }
     } else if (input === ' ') {
       if (item.type === 'toggle') {
-        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'shimmer' | 'breathing';
-        updateAnimation(animationKey, !settings.animation[animationKey]);
+        toggleItem(item.id);
       }
     } else if (key.return) {
       if (item.id === 'save') {
@@ -119,8 +162,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         onCancel();
         exit();
       } else if (item.type === 'toggle') {
-        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'shimmer' | 'breathing';
-        updateAnimation(animationKey, !settings.animation[animationKey]);
+        toggleItem(item.id);
       }
     } else if (key.escape || input === 'q') {
       onCancel();
@@ -187,10 +229,19 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         {renderToggle('shimmer', 'Shimmer', settings.animation.shimmer, focusIndex === 4)}
         {renderToggle('breathing', 'Breathing', settings.animation.breathing, focusIndex === 5)}
 
+        <Box marginTop={1} marginBottom={1}>
+          <Text dimColor>--- Behavior ---</Text>
+        </Box>
+
+        {/* Behavioral settings */}
+        {renderToggle('resumePrompt', 'Resume prompt on startup', settings.behavior.resumePrompt, focusIndex === 6)}
+        {renderDropdown('defaultScope', 'Default scope', settings.behavior.defaultScope, focusIndex === 7)}
+        {renderDropdown('retentionCount', 'Retention (keep N)', String(settings.behavior.retentionCount), focusIndex === 8)}
+
         <Box marginTop={1} flexDirection="row" gap={2}>
-          {renderButton('save', 'Save', focusIndex === 6)}
-          {renderButton('reset', 'Reset to defaults', focusIndex === 7)}
-          {renderButton('cancel', 'Cancel', focusIndex === 8)}
+          {renderButton('save', 'Save', focusIndex === 9)}
+          {renderButton('reset', 'Reset to defaults', focusIndex === 10)}
+          {renderButton('cancel', 'Cancel', focusIndex === 11)}
         </Box>
       </Box>
 

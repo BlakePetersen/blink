@@ -21,11 +21,27 @@ export interface ColorSettings {
   accent3: string;
 }
 
+export type SessionScope = 'project' | 'global';
+
+export interface BehaviorSettings {
+  resumePrompt: boolean;
+  retentionCount: number;
+  defaultScope: SessionScope;
+}
+
 export interface Settings {
   theme: string;
   colors: ColorSettings;
   animation: AnimationSettings;
+  behavior: BehaviorSettings;
 }
+
+// Behavioral defaults are theme-independent, so every preset shares them.
+export const DEFAULT_BEHAVIOR: BehaviorSettings = {
+  resumePrompt: true,
+  retentionCount: 10,
+  defaultScope: 'project',
+};
 
 export const THEME_PRESETS: Record<string, Settings> = {
   'goth-whimsy': {
@@ -44,6 +60,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
       shimmer: true,
       breathing: true,
     },
+    behavior: DEFAULT_BEHAVIOR,
   },
   minimal: {
     theme: 'minimal',
@@ -61,6 +78,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
       shimmer: false,
       breathing: true,
     },
+    behavior: DEFAULT_BEHAVIOR,
   },
   cyberpunk: {
     theme: 'cyberpunk',
@@ -78,6 +96,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
       shimmer: true,
       breathing: true,
     },
+    behavior: DEFAULT_BEHAVIOR,
   },
   ember: {
     theme: 'ember',
@@ -95,6 +114,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
       shimmer: false,
       breathing: true,
     },
+    behavior: DEFAULT_BEHAVIOR,
   },
 };
 
@@ -106,6 +126,8 @@ export const SPEED_BUCKETS = [150, 250, 500];
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const MIN_SPEED = 50;
 const MAX_SPEED = 2000;
+const MIN_RETENTION = 1;
+const MAX_RETENTION = 500;
 
 // Snap an arbitrary speed to the nearest UI bucket so the displayed and stored
 // values always agree (e.g. ember's 300ms shows and saves as balanced/250ms).
@@ -175,6 +197,28 @@ function coerceTheme(value: unknown, fallback: string): string {
   return typeof value === 'string' && value in THEME_PRESETS ? value : fallback;
 }
 
+function coerceRetention(value: unknown, fallback: number): number {
+  return typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= MIN_RETENTION &&
+    value <= MAX_RETENTION
+    ? value
+    : fallback;
+}
+
+function coerceScope(value: unknown, fallback: SessionScope): SessionScope {
+  return value === 'project' || value === 'global' ? value : fallback;
+}
+
+function coerceBehavior(value: unknown, fallback: BehaviorSettings): BehaviorSettings {
+  const raw = (typeof value === 'object' && value !== null ? value : {}) as Partial<BehaviorSettings>;
+  return {
+    resumePrompt: coerceBoolean(raw.resumePrompt, fallback.resumePrompt),
+    retentionCount: coerceRetention(raw.retentionCount, fallback.retentionCount),
+    defaultScope: coerceScope(raw.defaultScope, fallback.defaultScope),
+  };
+}
+
 function getSettingsPath(): string {
   return path.join(os.homedir(), '.claude', 'plugins', 'blink', 'settings.json');
 }
@@ -189,6 +233,7 @@ export function loadSettings(): Settings {
       theme: coerceTheme(parsed.theme, DEFAULT_SETTINGS.theme),
       colors: coerceColors(parsed.colors, DEFAULT_SETTINGS.colors),
       animation: coerceAnimation(parsed.animation, DEFAULT_SETTINGS.animation),
+      behavior: coerceBehavior(parsed.behavior, DEFAULT_SETTINGS.behavior),
     };
   } catch {
     return DEFAULT_SETTINGS;
