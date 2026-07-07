@@ -7,6 +7,7 @@ import TextInput from 'ink-text-input';
 import { useTheme } from '../lib/theme.js';
 import { getBackgrounds } from '../lib/backgrounds.js';
 import { chipLabel, fitChips } from '../lib/chips.js';
+import { ViewMode } from '../lib/types.js';
 
 interface Props {
   tags: string[];
@@ -15,7 +16,13 @@ interface Props {
   isSearching: boolean;
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;
+  viewMode: ViewMode;
   width: number;
+}
+
+// Compact origin-filter indicator shown at the right of the bar (issue #58).
+function viewModeIndicator(mode: ViewMode): string {
+  return `⊞ ${mode}`;
 }
 
 // Leading + trailing padding cells that frame the bar.
@@ -28,6 +35,7 @@ export function FilterBar({
   isSearching,
   onSearchChange,
   onSearchSubmit,
+  viewMode,
   width,
 }: Props) {
   const { settings } = useTheme();
@@ -36,10 +44,16 @@ export function FilterBar({
   // terminals (a fixed dark fill made default-foreground text invisible there).
   const filterBarBg = useMemo(() => getBackgrounds().filterBar, []);
 
-  // Reserve width for the search region so chips never push the bar to wrap.
-  const searchReserve = isSearching
-    ? 'search: '.length + searchQuery.length
-    : '/ to search'.length;
+  const viewLabel = viewModeIndicator(viewMode);
+
+  // Reserve width for the view indicator + search region so chips never push
+  // the bar to wrap. The indicator carries a trailing separator space.
+  const searchReserve =
+    viewLabel.length +
+    1 +
+    (isSearching
+      ? 'search: '.length + searchQuery.length
+      : '/ to search'.length);
 
   // Budget left for chips: total minus both edge paddings, the search region,
   // and one column of breathing room between chips and search.
@@ -120,6 +134,9 @@ export function FilterBar({
       {tagsContent}
       <Text backgroundColor={filterBarBg}>
         {' '.repeat(fillWidth)}
+      </Text>
+      <Text color={colors.accent1} backgroundColor={filterBarBg}>
+        {viewLabel}{' '}
       </Text>
       {searchContent}
       <Text backgroundColor={filterBarBg}>  </Text>

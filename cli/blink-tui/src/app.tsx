@@ -24,8 +24,9 @@ import {
   loadFixtureSessions,
 } from './lib/sessions.js';
 import { cycleTag } from './lib/tag-filter.js';
+import { filterByViewMode, cycleViewMode } from './lib/project-view.js';
 import { resolveEditorCommand, resolveClipboardCommand, buildEditorInvocation } from './lib/actions.js';
-import { SessionGroup, Session, ParseError } from './lib/types.js';
+import { SessionGroup, Session, ParseError, ViewMode } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
 import { getLayoutMode, calculatePaneWidths, getHeaderSize } from './lib/layout.js';
@@ -55,6 +56,8 @@ export function App({ cwd, onSelect }: Props) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Which sessions are shown, by originating project (issue #58).
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -68,8 +71,10 @@ export function App({ cwd, onSelect }: Props) {
   // Fixed split ratio until drag-to-resize is implemented
   const splitRatio = 0.4;
 
-  // Derived state
-  const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
+  // Derived state — narrow to the active view mode (by originating project)
+  // before applying the search/tag filters.
+  const viewGroups = filterByViewMode(allGroups, viewMode, cwd);
+  const filteredGroups = filterSessions(viewGroups, searchQuery, selectedTags);
   const allTags = getAllTags(allGroups);
   // Parse errors are always shown (not subject to search/tag filtering) so
   // unreadable files never silently disappear.
@@ -79,7 +84,8 @@ export function App({ cwd, onSelect }: Props) {
   const selectedSession = selectedItem?.kind === 'session' ? selectedItem.session : null;
   const selectedError = selectedItem?.kind === 'error' ? selectedItem.error : null;
   const hasAnySessions = allGroups.some(group => group.sessions.length > 0);
-  const hasActiveFilter = searchQuery.length > 0 || selectedTags.length > 0;
+  const hasActiveFilter =
+    searchQuery.length > 0 || selectedTags.length > 0 || viewMode !== 'all';
 
   // Keep the selection in range when a live filter shrinks the list, otherwise
   // getSessionAtIndex returns null and the preview blanks out (issue #45).
@@ -250,6 +256,10 @@ export function App({ cwd, onSelect }: Props) {
         setSelectedTags(prev => cycleTag(allTags, prev, 'backward'));
         setSelectedIndex(0);
       }
+    } else if (input === 'v') {
+      // Cycle the project view mode: all → project → global → all (issue #58).
+      setViewMode(prev => cycleViewMode(prev));
+      setSelectedIndex(0);
     } else if (input === 'd') {
       if (selectedSession) {
         setConfirmDelete(selectedSession);
@@ -309,6 +319,7 @@ export function App({ cwd, onSelect }: Props) {
       if (hasActiveFilter) {
         setSearchQuery('');
         setSelectedTags([]);
+        setViewMode('all');
         setSelectedIndex(0);
       } else {
         exit();
@@ -398,6 +409,7 @@ export function App({ cwd, onSelect }: Props) {
           isSearching={isSearching}
           onSearchChange={setSearchQuery}
           onSearchSubmit={handleSearchSubmit}
+          viewMode={viewMode}
           width={width}
         />
 
@@ -412,6 +424,7 @@ export function App({ cwd, onSelect }: Props) {
             height={listHeight}
             hasAnySessions={hasAnySessions}
             searchQuery={searchQuery}
+            currentProject={cwd}
           />
 
           {/* Divider (side-by-side only) */}

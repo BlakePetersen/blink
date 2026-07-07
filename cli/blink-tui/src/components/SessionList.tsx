@@ -6,10 +6,12 @@ import { Box, Text } from 'ink';
 import { SessionGroup, Session, ParseError } from '../lib/types.js';
 import { useTheme } from '../lib/theme.js';
 import { adjustBrightness, interpolateColor } from '../lib/animation.js';
+import stringWidth from 'string-width';
 import { computeVisibleWindow } from '../lib/viewport.js';
 import { truncateToWidth } from '../lib/width.js';
 import { plainGroupMarker } from '../lib/plain-mode.js';
 import { emptyStateMessage } from '../lib/list-view.js';
+import { projectLabel } from '../lib/project-view.js';
 
 interface Props {
   groups: SessionGroup[];
@@ -19,6 +21,20 @@ interface Props {
   height?: number;
   hasAnySessions?: boolean;
   searchQuery?: string;
+  currentProject?: string;
+}
+
+// Cap a project badge so a deeply-named origin can't crowd out the title.
+const BADGE_MAX_WIDTH = 14;
+
+// The origin badge shown for a session that came from a different project than
+// the one being browsed. Empty for same-project (the default context) or
+// project-less sessions, so the list only calls out cross-project origins (#58).
+function projectBadge(session: Session, currentProject: string): string {
+  if (!session.project || session.project === currentProject) return '';
+  const label = projectLabel(session.project);
+  if (!label) return '';
+  return `↗${truncateToWidth(label, BADGE_MAX_WIDTH)}`;
 }
 
 // A single navigable row in the flat list: either a session or an unreadable file.
@@ -84,6 +100,7 @@ export function SessionList({
   height,
   hasAnySessions = false,
   searchQuery = '',
+  currentProject = '',
 }: Props) {
   const { settings, animationState, plainMode } = useTheme();
   const { colors, animation } = settings;
@@ -154,7 +171,7 @@ export function SessionList({
             )}
             <Box paddingLeft={2}>
               {item.kind === 'session'
-                ? renderSessionRow(item.session, isSelected, selectedBgColor, width, plainMode)
+                ? renderSessionRow(item.session, isSelected, selectedBgColor, width, plainMode, currentProject)
                 : renderErrorRow(item.error, isSelected, selectedBgColor, width, plainMode)}
             </Box>
           </React.Fragment>
@@ -172,8 +189,11 @@ export function SessionList({
 
 // Reserve 8 columns for the selection marker and horizontal padding, then
 // truncate by display width so wide (CJK/emoji) titles never overflow the pane.
-function truncateTitle(title: string, width: number): string {
-  return truncateToWidth(title, width - 8);
+// An optional trailing badge (e.g. a cross-project origin) claims its own width
+// plus a separating space so title + badge together still fit the pane.
+function truncateTitle(title: string, width: number, badgeWidth = 0): string {
+  const reserved = badgeWidth > 0 ? badgeWidth + 1 : 0;
+  return truncateToWidth(title, width - 8 - reserved);
 }
 
 function selectionMarker(isSelected: boolean, plainMode: boolean): string {
@@ -186,8 +206,11 @@ function renderSessionRow(
   isSelected: boolean,
   selectedBgColor: string,
   width: number,
-  plainMode: boolean
+  plainMode: boolean,
+  currentProject: string
 ) {
+  const badge = projectBadge(session, currentProject);
+  const badgeWidth = stringWidth(badge);
   return (
     <Text
       color={isSelected ? 'white' : undefined}
@@ -195,7 +218,8 @@ function renderSessionRow(
       bold={isSelected}
     >
       {selectionMarker(isSelected, plainMode)}
-      {truncateTitle(session.title, width)}
+      {truncateTitle(session.title, width, badgeWidth)}
+      {badge ? <Text dimColor={!isSelected}> {badge}</Text> : null}
     </Text>
   );
 }

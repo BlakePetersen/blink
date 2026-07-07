@@ -39,6 +39,44 @@ describe('App smoke render', () => {
     unmount();
   });
 
+  it('badges a cross-project session and cycles the view mode with v', async () => {
+    const savedDir = join(cwd, '.claude/sessions/saved');
+    mkdirSync(savedDir, { recursive: true });
+    writeFileSync(
+      join(savedDir, 'local.md'),
+      `---\ntitle: Local Work\nproject: ${cwd}\ncreated: 2026-02-01\n---\n## Status\nok\n`
+    );
+    writeFileSync(
+      join(savedDir, 'foreign.md'),
+      '---\ntitle: Foreign Work\nproject: /Users/dev/otherproj\ncreated: 2026-01-01\n---\n## Status\nok\n'
+    );
+
+    const { App } = await import('../../app.js');
+    const { lastFrame, stdin, unmount } = render(<App cwd={cwd} />);
+    await delay(20);
+
+    // The cross-project session is badged with its origin basename; the bar
+    // shows the default "all" view mode.
+    expect(lastFrame()).toContain('↗otherproj');
+    expect(lastFrame()).toContain('⊞ all');
+
+    // v cycles all → project: only the current project's session remains.
+    stdin.write('v');
+    await delay(20);
+    expect(lastFrame()).toContain('⊞ project');
+    expect(lastFrame()).toContain('Local Work');
+    expect(lastFrame()).not.toContain('Foreign Work');
+
+    // v again → global: only the other project's session remains.
+    stdin.write('v');
+    await delay(20);
+    expect(lastFrame()).toContain('⊞ global');
+    expect(lastFrame()).toContain('Foreign Work');
+    expect(lastFrame()).not.toContain('Local Work');
+
+    unmount();
+  });
+
   it('retags the selected session through the e prompt', async () => {
     const savedDir = join(cwd, '.claude/sessions/saved');
     mkdirSync(savedDir, { recursive: true });

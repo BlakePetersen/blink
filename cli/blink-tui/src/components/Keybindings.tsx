@@ -58,6 +58,10 @@ export function Keybindings({
           <Text dimColor>{isNarrow ? '' : ' tags'}</Text>
         </Text>
         <Text>
+          <Text color={colors.accent1}>v</Text>
+          <Text dimColor>{isNarrow ? '' : ' view'}</Text>
+        </Text>
+        <Text>
           <Text color={colors.accent1}>n</Text>
           <Text dimColor>{isNarrow ? '' : ' rename'}</Text>
         </Text>
