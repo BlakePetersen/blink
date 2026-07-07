@@ -106,5 +106,77 @@ else
   fail "Expected resume context with 'Global Test', got: $OUTPUT"
 fi
 
+# Cleanup global test file
+rm -f "$GLOBAL_FILE"
+
+# Test 6: Archived snapshots are NOT selected by find_latest_snapshot
+echo "Test 6: Archived snapshots skipped"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts/archived"
+ARCHIVED_FILE="$TEST_DIR/.claude/sessions/restarts/archived/2025-01-10T20-00-00.md"
+printf -- '---\ntitle: Archived Only\n---\n' > "$ARCHIVED_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [ -z "$OUTPUT" ]; then
+  pass "Archived-only snapshots are not surfaced"
+else
+  fail "Expected no output when only archived snapshots exist, got: $OUTPUT"
+fi
+
+# Test 7: Active restart chosen over an archived sibling
+echo "Test 7: Active restart preferred over archived"
+ACTIVE_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-10T21-00-00.md"
+printf -- '---\ntitle: Active Restart\n---\n' > "$ACTIVE_FILE"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Active Restart"* ]] && [[ "$OUTPUT" != *"Archived Only"* ]]; then
+  pass "Selects active restart, ignores archived sibling"
+else
+  fail "Expected 'Active Restart' not 'Archived Only', got: $OUTPUT"
+fi
+
+# Test 8: pending-restore marker selects the marked snapshot over the newest
+echo "Test 8: pending-restore marker selects marked snapshot"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts" "$TEST_DIR/.claude/sessions/saved"
+NEWEST_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T09-00-00.md"
+printf -- '---\ntitle: Newest Restart\n---\n' > "$NEWEST_FILE"
+MARKED_FILE="$TEST_DIR/.claude/sessions/saved/picked.md"
+printf -- '---\ntitle: Picked Session\n---\n' > "$MARKED_FILE"
+MARKER="$TEST_DIR/.claude/sessions/.pending-restore"
+echo "$MARKED_FILE" > "$MARKER"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Picked Session"* ]] && [[ "$OUTPUT" != *"Newest Restart"* ]]; then
+  pass "Marker selects the marked snapshot over the newest"
+else
+  fail "Expected 'Picked Session' not 'Newest Restart', got: $OUTPUT"
+fi
+if [ ! -f "$MARKER" ]; then
+  pass "Pending-restore marker cleared after consumption"
+else
+  fail "Expected pending-restore marker to be cleared, but it still exists"
+fi
+
+# Test 9: stale marker (missing target) is cleared and falls back to newest
+echo "Test 9: stale pending-restore marker falls back to newest"
+rm -rf "$TEST_DIR/.claude" "$HOME/.claude"
+cd "$TEST_DIR"
+mkdir -p "$TEST_DIR/.claude/sessions/restarts"
+FALLBACK_FILE="$TEST_DIR/.claude/sessions/restarts/2025-01-11T10-00-00.md"
+printf -- '---\ntitle: Fallback Newest\n---\n' > "$FALLBACK_FILE"
+MARKER="$TEST_DIR/.claude/sessions/.pending-restore"
+echo "$TEST_DIR/.claude/sessions/saved/does-not-exist.md" > "$MARKER"
+
+OUTPUT=$("$HOOK_SCRIPT" 2>&1) || true
+if [[ "$OUTPUT" == *"Fallback Newest"* ]] && [ ! -f "$MARKER" ]; then
+  pass "Stale marker cleared and falls back to newest restart"
+else
+  MARKER_STATE=$([ -f "$MARKER" ] && echo exists || echo cleared)
+  fail "Expected fallback to 'Fallback Newest' with marker cleared ($MARKER_STATE), got: $OUTPUT"
+fi
+
 echo ""
 echo -e "${GREEN}All tests passed!${NC}"

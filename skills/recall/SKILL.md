@@ -51,20 +51,28 @@ Present as numbered list and let user pick. Then:
 
 ## If TUI Browser
 
-Tell the user:
+Tell the user to run the launcher in their terminal:
 
 ```
-To launch the TUI browser, run this in your terminal:
+To browse and restore a session, run this in your terminal:
 
-  cd [current directory] && pnpm --dir ~/.claude/plugins/local/blink/cli/blink-tui dev
+  "${CLAUDE_PLUGIN_ROOT}/scripts/browse-sessions.sh"
 
 Use arrow keys to navigate, Enter to select, q to quit.
 ```
 
-Note: The TUI requires direct terminal access and can't run within Claude Code's context.
+What happens: `browse-sessions.sh` runs the TUI, and when you press Enter it
+records your choice as a pending-restore marker at
+`.claude/sessions/.pending-restore`. The next time you start a Claude Code
+session in this project, the session-start hook restores **that** snapshot
+(then clears the marker). Selecting nothing leaves everything untouched.
+
+Note: The TUI requires direct terminal access and can't run within Claude
+Code's context, so it must be launched manually.
 
 ## Notes
 
 - Sort by most recent first
 - Show relative timestamps when possible
 - The TUI is the premium experience but requires manual launch
+- Enter → pending-restore marker → restored on next session start

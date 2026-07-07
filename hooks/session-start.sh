@@ -15,7 +15,13 @@ debug_log() {
 
 debug_log "Hook ran at $(date), pwd=$(pwd)"
 
-# Find latest snapshot - check project-local first, then global
+# Marker written by scripts/browse-sessions.sh when the user picks a session
+# in the TUI. It points at the snapshot to restore on the next session start.
+PENDING_MARKER=".claude/sessions/.pending-restore"
+
+# Find latest snapshot - check project-local first, then global.
+# The glob only matches files directly in restarts/, so restarts/archived/
+# snapshots are intentionally ignored (see scripts/archive-snapshot.sh).
 find_latest_snapshot() {
     local project_dir=".claude/sessions/restarts"
     local global_dir="$HOME/.claude/sessions/restarts"
@@ -41,6 +47,25 @@ find_latest_snapshot() {
     return 1
 }
 
+# Resolve which snapshot to offer. An explicit TUI selection (pending-restore
+# marker) wins over the newest restart snapshot. The marker is single-use.
+resolve_snapshot() {
+    if [ -f "$PENDING_MARKER" ]; then
+        local pending
+        pending="$(head -1 "$PENDING_MARKER" 2>/dev/null || true)"
+        # Consume the marker regardless of whether its target is still valid.
+        rm -f "$PENDING_MARKER"
+        if [ -n "$pending" ] && [ -f "$pending" ]; then
+            debug_log "Using pending-restore marker: $pending"
+            echo "$pending"
+            return 0
+        fi
+        debug_log "Stale pending-restore marker cleared, falling back to newest"
+    fi
+
+    find_latest_snapshot
+}
+
 # Escape string for JSON embedding
 escape_for_json() {
     local input="$1"
@@ -60,8 +85,8 @@ escape_for_json() {
     printf '%s' "$output"
 }
 
-# Check for snapshot
-LATEST=$(find_latest_snapshot || echo "")
+# Check for snapshot (pending-restore selection wins over newest)
+LATEST=$(resolve_snapshot || echo "")
 debug_log "LATEST=$LATEST"
 
 if [ -n "$LATEST" ] && [ -f "$LATEST" ]; then

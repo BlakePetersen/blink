@@ -61,11 +61,25 @@ Use `/blink-save` to create named snapshots at any point. These persist until yo
 
 ### Session Browser (TUI)
 
-For power users, Blink includes a terminal UI for browsing sessions:
+For power users, Blink includes a terminal UI for browsing sessions. Launch it
+with the browse script:
 
 ```bash
-cd your-project && pnpm --dir ~/.claude/plugins/local/blink/cli/blink-tui dev
+cd your-project && "$CLAUDE_PLUGIN_ROOT/scripts/browse-sessions.sh"
 ```
+
+Navigate with the arrow keys and press Enter to pick a session. Your selection
+is recorded as a pending-restore marker (`.claude/sessions/.pending-restore`),
+and the **next** Claude Code session you start in that project resumes the
+chosen snapshot instead of merely the newest one. The marker is cleared once
+consumed.
+
+### Consuming restarts
+
+When you Restore or dismiss an auto-detected restart snapshot, Blink archives it
+to `.claude/sessions/restarts/archived/` so the resume prompt does not keep
+re-surfacing the same stale session. Archived snapshots are kept for history but
+are never offered on start. Named saves under `saved/` persist untouched.
 
 ## Storage
 
@@ -74,7 +88,9 @@ Sessions are stored as markdown files:
 ```
 .claude/sessions/           # Per-project
   restarts/                 # Auto-saves from /blink-restart
+    archived/               # Consumed restarts (kept for history, not offered)
   saved/                    # Named saves from /blink-save
+  .pending-restore          # Marker: TUI-selected snapshot to restore next start
 
 ~/.claude/sessions/         # Global (with --global flag)
 ```

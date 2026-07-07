@@ -41,3 +41,6 @@ jobs:
 
       - name: Run session-start hook tests
         run: ./tests/test-session-start-hook.sh
+
+      - name: Run archive-snapshot tests
+        run: ./tests/test-archive-snapshot.sh

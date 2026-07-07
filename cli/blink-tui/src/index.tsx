@@ -10,15 +10,17 @@ import { Session } from './lib/types.js';
 // Get current working directory from args or use process.cwd()
 const cwd = process.argv[2] || process.cwd();
 
-// Handle session selection - output path to stdout for calling process
+// Handle session selection - emit the protocol line on stdout for the calling
+// script (scripts/browse-sessions.sh). The interactive UI renders to stderr so
+// stdout carries only this machine-readable selection.
 function handleSelect(session: Session) {
-  // Output the selected session path so calling script can use it
-  console.log(`BLINK_SELECTED:${session.path}`);
+  process.stdout.write(`BLINK_SELECTED:${session.path}\n`);
 }
 
-// Render the app
+// Render the interactive UI to stderr so stdout stays clean for the selection.
 const { waitUntilExit } = render(
-  <App cwd={cwd} onSelect={handleSelect} />
+  <App cwd={cwd} onSelect={handleSelect} />,
+  { stdout: process.stderr as unknown as NodeJS.WriteStream }
 );
 
 waitUntilExit();
