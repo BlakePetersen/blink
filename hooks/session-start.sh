@@ -104,9 +104,12 @@ extract_project() {
 }
 
 # Modification time as an epoch value, preferring sub-second precision. Tries
-# BSD stat, then GNU stat, so ordering is correct on macOS and Linux alike.
+# GNU stat first, then BSD, so ordering is correct on Linux and macOS alike.
+# GNU stat is tried first on purpose: BSD's `stat -c` exits nonzero cleanly on
+# macOS, whereas GNU's `stat -f` means "filesystem status" and would emit stray
+# `File: ...` text that contaminates the path if tried first on Linux.
 stat_mtime() {
-    stat -f '%Fm' "$1" 2>/dev/null || stat -c '%.9Y' "$1" 2>/dev/null || echo 0
+    stat -c '%.9Y' "$1" 2>/dev/null || stat -f '%Fm' "$1" 2>/dev/null || echo 0
 }
 
 # The project the current session is running in. The global snapshot store is

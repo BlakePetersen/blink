@@ -18,9 +18,11 @@ SETTINGS_FILE="$HOME/.claude/plugins/blink/settings.json"
 # unset or unreadable. saved/ and restarts/archived/ are never pruned.
 DEFAULT_RETENTION=20
 
-# Modification time as an epoch value (BSD then GNU stat) for newest-first sort.
+# Modification time as an epoch value for newest-first sort. GNU stat is tried
+# first: BSD's `stat -c` exits nonzero cleanly on macOS, whereas GNU's `stat -f`
+# means "filesystem status" and emits stray text that corrupts the sort on Linux.
 stat_mtime() {
-  stat -f '%Fm' "$1" 2>/dev/null || stat -c '%.9Y' "$1" 2>/dev/null || echo 0
+  stat -c '%.9Y' "$1" 2>/dev/null || stat -f '%Fm' "$1" 2>/dev/null || echo 0
 }
 
 # Read the configured retention count, clamped to a sane integer >= 1.
