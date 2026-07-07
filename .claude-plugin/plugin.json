@@ -1,7 +1,7 @@
 {
   "name": "blink",
   "version": "0.5.0",
-  "description": "Session persistence for Claude Code. Quick session cycling (/blink-restart), manual snapshots (/blink-save), and session browser (/blink-recall).",
+  "description": "Session persistence for Claude Code. Quick session cycling (/blink:restart), manual snapshots (/blink:save), and session browser (/blink:recall).",
   "author": {
     "name": "Blake Petersen",
     "email": "blake@blakepetersen.io"
