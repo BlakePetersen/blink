@@ -5,11 +5,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Settings, loadSettings, saveSettings, applyPreset } from './settings.js';
 import { AnimationState, calculateAnimationState } from './animation.js';
 import { isReducedMotion } from './motion.js';
+import { isPlainMode } from './plain-mode.js';
 
 interface ThemeContextValue {
   settings: Settings;
   animationState: AnimationState;
   reducedMotion: boolean;
+  plainMode: boolean;
   updateSettings: (updates: Partial<Settings>) => void;
   setTheme: (themeName: string) => void;
 }
@@ -24,6 +26,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [startTime] = useState(() => Date.now());
 
   const reducedMotion = useMemo(() => isReducedMotion(settings), [settings]);
+  const plainMode = useMemo(() => isPlainMode(), []);
 
   useEffect(() => {
     // Skip animation when reduced motion is active or all effects are disabled
@@ -65,7 +68,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ settings, animationState, reducedMotion, updateSettings, setTheme }}>
+    <ThemeContext.Provider value={{ settings, animationState, reducedMotion, plainMode, updateSettings, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

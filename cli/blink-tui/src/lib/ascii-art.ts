@@ -27,7 +27,12 @@ const HEADER_MEDIUM = `
 // Single line - just the word
 const HEADER_MINIMAL = `▌BLINK▐`;
 
-export function getHeaderArt(size: HeaderSize): string {
+// Readable, ASCII-only single-line header for plain mode (screen readers /
+// terminals without box-drawing coverage). Not decorative block art.
+export const PLAIN_HEADER = 'BLINK';
+
+export function getHeaderArt(size: HeaderSize, plain = false): string {
+  if (plain) return PLAIN_HEADER;
   switch (size) {
     case 'full':
       return HEADER_FULL;
@@ -38,6 +43,6 @@ export function getHeaderArt(size: HeaderSize): string {
   }
 }
 
-export function getHeaderLines(size: HeaderSize): string[] {
-  return getHeaderArt(size).split('\n');
+export function getHeaderLines(size: HeaderSize, plain = false): string[] {
+  return getHeaderArt(size, plain).split('\n');
 }

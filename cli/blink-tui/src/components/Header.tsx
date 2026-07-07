@@ -13,12 +13,15 @@ interface Props {
 }
 
 export function Header({ width }: Props) {
-  const { settings, animationState } = useTheme();
+  const { settings, animationState, plainMode } = useTheme();
   const { colors, animation } = settings;
   const { cyclePosition } = animationState;
 
   const headerSize: HeaderSize = getHeaderSize(width);
-  const lines = useMemo(() => getHeaderLines(headerSize), [headerSize]);
+  const lines = useMemo(
+    () => getHeaderLines(headerSize, plainMode),
+    [headerSize, plainMode]
+  );
 
   const renderedLines = useMemo(() => {
     return lines.map((line, lineIdx) => {

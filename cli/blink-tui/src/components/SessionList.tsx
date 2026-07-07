@@ -7,6 +7,8 @@ import { SessionGroup, Session, ParseError } from '../lib/types.js';
 import { useTheme } from '../lib/theme.js';
 import { adjustBrightness, interpolateColor } from '../lib/animation.js';
 import { computeVisibleWindow } from '../lib/viewport.js';
+import { truncateToWidth } from '../lib/width.js';
+import { plainGroupMarker } from '../lib/plain-mode.js';
 import { emptyStateMessage } from '../lib/list-view.js';
 
 interface Props {
@@ -83,7 +85,7 @@ export function SessionList({
   hasAnySessions = false,
   searchQuery = '',
 }: Props) {
-  const { settings, animationState } = useTheme();
+  const { settings, animationState, plainMode } = useTheme();
   const { colors, animation } = settings;
   const { breathPhase } = animationState;
 
@@ -132,7 +134,7 @@ export function SessionList({
     <Box flexDirection="column" width={width} height={height} paddingX={1}>
       {moreAbove > 0 && (
         <Text color={groupHeaderColor} dimColor>
-          ↑ {moreAbove} more
+          {plainMode ? '^' : '↑'} {moreAbove} more
         </Text>
       )}
 
@@ -141,18 +143,19 @@ export function SessionList({
         const isSelected = absoluteIndex === selectedIndex;
         const showHeader = item.groupLabel !== lastGroupLabel;
         lastGroupLabel = item.groupLabel;
+        const groupMarker = plainMode ? plainGroupMarker(item.groupIcon) : item.groupIcon;
 
         return (
           <React.Fragment key={absoluteIndex}>
             {showHeader && (
               <Text color={groupHeaderColor} dimColor>
-                {item.groupIcon} {item.groupLabel}
+                {groupMarker} {item.groupLabel}
               </Text>
             )}
             <Box paddingLeft={2}>
               {item.kind === 'session'
-                ? renderSessionRow(item.session, isSelected, selectedBgColor, width)
-                : renderErrorRow(item.error, isSelected, selectedBgColor, width)}
+                ? renderSessionRow(item.session, isSelected, selectedBgColor, width, plainMode)
+                : renderErrorRow(item.error, isSelected, selectedBgColor, width, plainMode)}
             </Box>
           </React.Fragment>
         );
@@ -160,22 +163,30 @@ export function SessionList({
 
       {moreBelow > 0 && (
         <Text color={groupHeaderColor} dimColor>
-          ↓ {moreBelow} more
+          {plainMode ? 'v' : '↓'} {moreBelow} more
         </Text>
       )}
     </Box>
   );
 }
 
+// Reserve 8 columns for the selection marker and horizontal padding, then
+// truncate by display width so wide (CJK/emoji) titles never overflow the pane.
 function truncateTitle(title: string, width: number): string {
-  return title.length > width - 8 ? title.slice(0, width - 11) + '...' : title;
+  return truncateToWidth(title, width - 8);
+}
+
+function selectionMarker(isSelected: boolean, plainMode: boolean): string {
+  if (!isSelected) return '  ';
+  return plainMode ? '> ' : '● ';
 }
 
 function renderSessionRow(
   session: Session,
   isSelected: boolean,
   selectedBgColor: string,
-  width: number
+  width: number,
+  plainMode: boolean
 ) {
   return (
     <Text
@@ -183,7 +194,7 @@ function renderSessionRow(
       backgroundColor={isSelected ? selectedBgColor : undefined}
       bold={isSelected}
     >
-      {isSelected ? '● ' : '  '}
+      {selectionMarker(isSelected, plainMode)}
       {truncateTitle(session.title, width)}
     </Text>
   );
@@ -193,7 +204,8 @@ function renderErrorRow(
   error: ParseError,
   isSelected: boolean,
   selectedBgColor: string,
-  width: number
+  width: number,
+  plainMode: boolean
 ) {
   const name = error.file.split('/').pop() ?? error.file;
   return (
@@ -202,7 +214,7 @@ function renderErrorRow(
       backgroundColor={isSelected ? selectedBgColor : undefined}
       bold={isSelected}
     >
-      {isSelected ? '● ' : '  '}
+      {selectionMarker(isSelected, plainMode)}
       {truncateTitle(name, width)}
     </Text>
   );

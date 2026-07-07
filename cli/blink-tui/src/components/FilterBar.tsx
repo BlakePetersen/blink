@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { useTheme } from '../lib/theme.js';
-import { BACKGROUNDS } from '../lib/backgrounds.js';
+import { getBackgrounds } from '../lib/backgrounds.js';
 import { chipLabel, fitChips } from '../lib/chips.js';
 
 interface Props {
@@ -32,6 +32,9 @@ export function FilterBar({
 }: Props) {
   const { settings } = useTheme();
   const { colors } = settings;
+  // Resolve the bar fill to the terminal's theme so it stays legible on light
+  // terminals (a fixed dark fill made default-foreground text invisible there).
+  const filterBarBg = useMemo(() => getBackgrounds().filterBar, []);
 
   // Reserve width for the search region so chips never push the bar to wrap.
   const searchReserve = isSearching
@@ -59,13 +62,13 @@ export function FilterBar({
     visibleTags.forEach((tag, idx) => {
       const isActive = selectedTags.includes(tag);
       if (idx > 0) {
-        parts.push(<Text key={`sep-${idx}`} backgroundColor={BACKGROUNDS.filterBar}> </Text>);
+        parts.push(<Text key={`sep-${idx}`} backgroundColor={filterBarBg}> </Text>);
       }
       parts.push(
         <Text
           key={tag}
           color={isActive ? 'black' : colors.accent3}
-          backgroundColor={isActive ? colors.accent2 : BACKGROUNDS.filterBar}
+          backgroundColor={isActive ? colors.accent2 : filterBarBg}
           dimColor={!isActive}
         >
           {chipLabel(tag, isActive)}
@@ -73,9 +76,9 @@ export function FilterBar({
       );
     });
     if (overflow > 0) {
-      parts.push(<Text key="sep-more" backgroundColor={BACKGROUNDS.filterBar}> </Text>);
+      parts.push(<Text key="sep-more" backgroundColor={filterBarBg}> </Text>);
       parts.push(
-        <Text key="more" dimColor backgroundColor={BACKGROUNDS.filterBar}>
+        <Text key="more" dimColor backgroundColor={filterBarBg}>
           +{overflow}
         </Text>
       );
@@ -87,7 +90,7 @@ export function FilterBar({
     if (isSearching) {
       return (
         <>
-          <Text backgroundColor={BACKGROUNDS.filterBar}>search: </Text>
+          <Text backgroundColor={filterBarBg}>search: </Text>
           <TextInput
             value={searchQuery}
             onChange={onSearchChange}
@@ -98,7 +101,7 @@ export function FilterBar({
       );
     }
     return (
-      <Text dimColor backgroundColor={BACKGROUNDS.filterBar}>
+      <Text dimColor backgroundColor={filterBarBg}>
         / to search
       </Text>
     );
@@ -113,13 +116,13 @@ export function FilterBar({
 
   return (
     <Box width={width}>
-      <Text backgroundColor={BACKGROUNDS.filterBar}>  </Text>
+      <Text backgroundColor={filterBarBg}>  </Text>
       {tagsContent}
-      <Text backgroundColor={BACKGROUNDS.filterBar}>
+      <Text backgroundColor={filterBarBg}>
         {' '.repeat(fillWidth)}
       </Text>
       {searchContent}
-      <Text backgroundColor={BACKGROUNDS.filterBar}>  </Text>
+      <Text backgroundColor={filterBarBg}>  </Text>
     </Box>
   );
 }

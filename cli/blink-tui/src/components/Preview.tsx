@@ -7,6 +7,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Session, ParseError } from '../lib/types.js';
 import { useTheme } from '../lib/theme.js';
 import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation.js';
+import { truncateToWidth } from '../lib/width.js';
+import { formatTag, PLAIN_TITLE_MARKER } from '../lib/plain-mode.js';
 
 interface Props {
   session: Session | null;
@@ -16,7 +18,7 @@ interface Props {
 }
 
 export function Preview({ session, parseError, width, height }: Props) {
-  const { settings, animationState, reducedMotion } = useTheme();
+  const { settings, animationState, reducedMotion, plainMode } = useTheme();
   const { colors, animation } = settings;
   const { cyclePosition, elapsed } = animationState;
 
@@ -44,7 +46,7 @@ export function Preview({ session, parseError, width, height }: Props) {
     return (
       <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
         <Text color="red" bold>
-          ⚠ Could not read file
+          {plainMode ? '!' : '⚠'} Could not read file
         </Text>
         <Box marginTop={1}>
           <Text>{name}</Text>
@@ -74,7 +76,7 @@ export function Preview({ session, parseError, width, height }: Props) {
     <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
       {/* Title */}
       <Text color={titleColor} bold>
-        ✦ {session.title}
+        {plainMode ? PLAIN_TITLE_MARKER : '✦'} {session.title}
       </Text>
 
       {/* Metadata */}
@@ -89,7 +91,7 @@ export function Preview({ session, parseError, width, height }: Props) {
         <Box marginTop={1}>
           {session.tags.map((tag, i) => (
             <Text key={tag} color={getTagColor(i)} dimColor>
-              {i > 0 ? ' ' : ''}「{tag}」
+              {i > 0 ? ' ' : ''}{formatTag(tag, plainMode)}
             </Text>
           ))}
         </Box>
@@ -134,9 +136,9 @@ export function Preview({ session, parseError, width, height }: Props) {
   );
 }
 
-function truncate(str: string, maxLen: number): string {
-  // Handle multiline - just take first line
+function truncate(str: string, maxWidth: number): string {
+  // Handle multiline - just take first line, then truncate by display width so
+  // emoji/CJK are measured correctly and never split mid-character.
   const firstLine = str.split('\n')[0];
-  if (firstLine.length <= maxLen) return firstLine;
-  return firstLine.slice(0, maxLen - 3) + '...';
+  return truncateToWidth(firstLine, maxWidth);
 }
