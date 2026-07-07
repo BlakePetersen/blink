@@ -32,6 +32,16 @@ Pick up where you left off?
   [R] Restore   [B] Browse sessions   [S] Start fresh
 ```
 
+If the injected context includes a **Recent snapshots** list with more than one
+entry, also offer the picker so a newer trivial restart does not shadow earlier
+work or a saved session:
+
+```
+Or pick a specific one:
+
+  [1] "[TITLE #1]"  [2] "[TITLE #2]"  [3] "[TITLE #3]"
+```
+
 ## Task Response
 
 When the user has a specific task, acknowledge it but offer the snapshot first:
@@ -43,6 +53,9 @@ On it. Quick thing first - you have a snapshot from earlier:
 
 [R] Restore that session   [S] Skip, help with this instead   [B] Browse all
 ```
+
+If a **Recent snapshots** list is present, mention they can pick another by
+number instead of restoring the featured one.
 
 ## Placeholders
 
@@ -74,6 +87,12 @@ If they just said hi:
 ```
 Starting fresh. What are we working on?
 ```
+
+### Pick by number (1, 2, 3, ...)
+
+When the user picks a number from the **Recent snapshots** list, read that
+snapshot's file (its path is shown beneath each entry), then restore it exactly
+as in **Restore (R)** — announce, consume (if it is a restart), and continue.
 
 ### Browse (B)
 
