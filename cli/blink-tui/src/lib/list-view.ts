@@ -21,3 +21,11 @@ export function positionLabel(currentIndex: number, total: number): string {
   if (total <= 0) return '0/0';
   return `${currentIndex + 1}/${total}`;
 }
+
+// Label the items hidden when a list of `total` is capped at `cap`, or null
+// when nothing is hidden. Drives the Preview "+N more" indicators (issue #69).
+export function moreLabel(total: number, cap: number): string | null {
+  const hidden = total - cap;
+  if (hidden <= 0) return null;
+  return `+${hidden} more`;
+}

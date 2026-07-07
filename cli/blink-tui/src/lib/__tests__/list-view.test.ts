@@ -2,7 +2,7 @@
 // ABOUTME: Covers filter-shrink edge cases from issue #45
 
 import { describe, it, expect } from 'vitest';
-import { clampIndex, emptyStateMessage, positionLabel } from '../list-view.js';
+import { clampIndex, emptyStateMessage, positionLabel, moreLabel } from '../list-view.js';
 
 describe('list-view', () => {
   describe('clampIndex', () => {
@@ -53,6 +53,18 @@ describe('list-view', () => {
     it('shows a 1-based position within the count', () => {
       expect(positionLabel(0, 3)).toBe('1/3');
       expect(positionLabel(2, 3)).toBe('3/3');
+    });
+  });
+
+  describe('moreLabel', () => {
+    it('returns null when nothing is hidden', () => {
+      expect(moreLabel(3, 5)).toBeNull();
+      expect(moreLabel(5, 5)).toBeNull();
+    });
+
+    it('reports the count hidden beyond the cap', () => {
+      expect(moreLabel(7, 5)).toBe('+2 more');
+      expect(moreLabel(6, 5)).toBe('+1 more');
     });
   });
 });
