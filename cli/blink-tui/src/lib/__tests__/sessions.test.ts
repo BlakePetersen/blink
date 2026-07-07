@@ -217,6 +217,21 @@ describe('parseSession field parsing', () => {
     }
   });
 
+  it('parses the originating project path from frontmatter', () => {
+    const file = join(dir, 'with-project.md');
+    writeFileSync(
+      file,
+      '---\ntitle: Origin\nproject: /Users/dev/webapp\ncreated: 2026-01-01\n---\nbody\n'
+    );
+
+    const result = parseSession(file);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.session.project).toBe('/Users/dev/webapp');
+    }
+  });
+
   it('coerces a scalar tags value to an empty array (never per-character)', () => {
     // frontmatter `tags: foo` parses as a string; iterating it as characters
     // would leak per-letter tags into getAllTags (issue #38).

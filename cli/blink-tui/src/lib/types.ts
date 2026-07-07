@@ -22,6 +22,10 @@ export interface SessionGroup {
   isGlobal: boolean;
 }
 
+// Which sessions the browser shows, by originating project (issue #58).
+// 'project' = this project only, 'global' = other projects only, 'all' = both.
+export type ViewMode = 'project' | 'global' | 'all';
+
 export interface ParseError {
   file: string;
   reason: string;
