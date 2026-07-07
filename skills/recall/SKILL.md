@@ -15,7 +15,7 @@ You are helping the user browse and load a saved session.
 ls .claude/sessions/saved/*.md .claude/sessions/restarts/*.md ~/.claude/sessions/saved/*.md ~/.claude/sessions/restarts/*.md 2>/dev/null | wc -l
 ```
 
-If zero sessions, say: "No saved sessions found. Use /blink-save to create one."
+If zero sessions, say: "No saved sessions found. Use /blink:save to create one."
 
 ## Step 2: Offer options
 
@@ -37,7 +37,7 @@ List available sessions:
 
 ```bash
 # List all sessions with titles
-for f in .claude/sessions/saved/*.md .claude/sessions/restarts/*.md 2>/dev/null; do
+for f in .claude/sessions/saved/*.md .claude/sessions/restarts/*.md; do
   [ -f "$f" ] && head -5 "$f" | grep -m1 "^title:" | sed "s/^title: *//" | tr -d '"'
 done
 ```

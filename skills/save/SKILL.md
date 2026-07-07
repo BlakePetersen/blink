@@ -39,7 +39,7 @@ options:
 ## Step 2: Choose scope (project vs global)
 
 By default, save into the current project's `.claude/sessions/`. If the user
-asks to save **globally** (e.g. `/blink-save --global`, "save this globally", or
+asks to save **globally** (e.g. `/blink:save --global`, "save this globally", or
 "make it available everywhere"), save into `~/.claude/sessions/` instead so the
 snapshot is not tied to this project.
 

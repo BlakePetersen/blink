@@ -10,11 +10,12 @@ Blink lets you save and restore Claude Code sessions. When you're deep in a task
 
 | Command | Description |
 |---------|-------------|
-| `/blink-restart` | Save current session and restart. On next launch, you'll be prompted to restore. |
-| `/blink-save` | Save a named snapshot with optional tags. Great for bookmarking milestones. |
-| `/blink-recall` | Browse and load saved sessions. |
+| `/blink:restart` | Save current session and restart. On next launch, you'll be prompted to restore. |
+| `/blink:save` | Save a named snapshot with optional tags. Great for bookmarking milestones. |
+| `/blink:recall` | Browse and load saved sessions. |
+| `/blink:settings` | Configure themes and animations for Blink's visual display. |
 
-Add `--global` to `/blink-restart` or `/blink-save` to store the snapshot in
+Add `--global` to `/blink:restart` or `/blink:save` to store the snapshot in
 `~/.claude/sessions/` (available from any project) instead of the current
 project's `.claude/sessions/`.
 
@@ -44,7 +45,7 @@ project's `.claude/sessions/`.
 
 ### Session Restart Flow
 
-1. Run `/blink-restart` when you need to restart Claude
+1. Run `/blink:restart` when you need to restart Claude
 2. Blink captures your current context as a snapshot
 3. Restart Claude Code
 4. On launch, you'll see:
@@ -61,7 +62,7 @@ project's `.claude/sessions/`.
 
 ### Saved Sessions
 
-Use `/blink-save` to create named snapshots at any point. These persist until you delete them, making it easy to return to past work.
+Use `/blink:save` to create named snapshots at any point. These persist until you delete them, making it easy to return to past work.
 
 ### Session Browser (TUI)
 
@@ -103,9 +104,9 @@ Sessions are stored as markdown files:
 
 ```
 .claude/sessions/           # Per-project
-  restarts/                 # Auto-saves from /blink-restart
+  restarts/                 # Auto-saves from /blink:restart
     archived/               # Consumed restarts (kept for history, not offered)
-  saved/                    # Named saves from /blink-save
+  saved/                    # Named saves from /blink:save
   .pending-restore          # Marker: TUI-selected snapshot to restore next start
 
 ~/.claude/sessions/         # Global (with --global flag)

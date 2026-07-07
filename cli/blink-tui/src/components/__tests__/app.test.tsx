@@ -4,9 +4,11 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from 'ink-testing-library';
-import { mkdtempSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 describe('App smoke render', () => {
   const originalEnv = process.env;
@@ -34,6 +36,32 @@ describe('App smoke render', () => {
     const { App } = await import('../../app.js');
     const { lastFrame, unmount } = render(<App cwd={cwd} />);
     expect(lastFrame()).toContain('No sessions yet');
+    unmount();
+  });
+
+  it('retags the selected session through the e prompt', async () => {
+    const savedDir = join(cwd, '.claude/sessions/saved');
+    mkdirSync(savedDir, { recursive: true });
+    const file = join(savedDir, 'session.md');
+    writeFileSync(file, '---\ntitle: Retag Me\ncreated: 2026-01-01\n---\n## Status\nok\n');
+
+    const { App } = await import('../../app.js');
+    const { parseSession } = await import('../../lib/sessions.js');
+    const { stdin, unmount } = render(<App cwd={cwd} />);
+    await delay(20);
+
+    stdin.write('e'); // open retag prompt
+    await delay(20);
+    stdin.write('alpha, beta');
+    await delay(20);
+    stdin.write('\r'); // submit
+    await delay(20);
+
+    const result = parseSession(file);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.session.tags).toEqual(['alpha', 'beta']);
+    }
     unmount();
   });
 });

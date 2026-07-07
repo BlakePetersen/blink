@@ -54,8 +54,28 @@ export function Keybindings({
           <Text dimColor>{isNarrow ? '' : ' load'}</Text>
         </Text>
         <Text>
-          <Text color={colors.accent1}>t</Text>
+          <Text color={colors.accent1}>{isNarrow ? 't' : 't/T'}</Text>
           <Text dimColor>{isNarrow ? '' : ' tags'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>n</Text>
+          <Text dimColor>{isNarrow ? '' : ' rename'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>e</Text>
+          <Text dimColor>{isNarrow ? '' : ' retag'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>a</Text>
+          <Text dimColor>{isNarrow ? '' : ' archive'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>y</Text>
+          <Text dimColor>{isNarrow ? '' : ' copy path'}</Text>
+        </Text>
+        <Text>
+          <Text color={colors.accent1}>o</Text>
+          <Text dimColor>{isNarrow ? '' : ' open'}</Text>
         </Text>
         <Text>
           <Text color={colors.accent1}>d</Text>

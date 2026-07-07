@@ -1,6 +1,6 @@
 #!/bin/bash
 # ABOUTME: Creates a Blink session snapshot file with proper directory structure
-# ABOUTME: Called by agent when running /blink-rs or /blink-ss commands
+# ABOUTME: Called by agent when running /blink:restart or /blink:save commands
 
 set -e
 
