@@ -19,51 +19,30 @@ debug_log "Hook ran at $(date), pwd=$(pwd)"
 # in the TUI. It points at the snapshot to restore on the next session start.
 PENDING_MARKER=".claude/sessions/.pending-restore"
 
-# Find latest snapshot - check project-local first, then global.
-# The glob only matches files directly in restarts/, so restarts/archived/
-# snapshots are intentionally ignored (see scripts/archive-snapshot.sh).
-find_latest_snapshot() {
-    local project_dir=".claude/sessions/restarts"
-    local global_dir="$HOME/.claude/sessions/restarts"
+# Settings written by the TUI (see cli/blink-tui/src/lib/settings.ts).
+SETTINGS_FILE="$HOME/.claude/plugins/blink/settings.json"
 
-    # Try project-local first
-    if [ -d "$project_dir" ]; then
-        local latest=$(ls -t "$project_dir"/*.md 2>/dev/null | head -1)
-        if [ -n "$latest" ]; then
-            echo "$(cd "$(dirname "$latest")" && pwd)/$(basename "$latest")"
-            return 0
-        fi
+# How many recent snapshots to surface in the resume picker (#59).
+PICKER_LIMIT=5
+
+# Read a single behavior setting. Prefers jq; falls back to a crude grep so the
+# hook still honors settings on machines without jq installed.
+#   $1 = jq path (e.g. .behavior.resumePrompt)
+#   $2 = plain key name for the grep fallback (e.g. resumePrompt)
+read_setting() {
+    local jq_path="$1"
+    local key="$2"
+    [ -f "$SETTINGS_FILE" ] || return 0
+    if command -v jq >/dev/null 2>&1; then
+        # Note: avoid `// empty` here - jq treats a literal `false` as absent,
+        # which would mask a `resumePrompt: false` setting. A missing key yields
+        # the string "null", which callers treat as "unset".
+        jq -r "${jq_path}" "$SETTINGS_FILE" 2>/dev/null || true
+    else
+        grep -o "\"${key}\"[[:space:]]*:[[:space:]]*[^,}]*" "$SETTINGS_FILE" 2>/dev/null \
+            | head -1 \
+            | sed 's/.*:[[:space:]]*//; s/[[:space:]]*$//; s/"//g' || true
     fi
-
-    # Fall back to global
-    if [ -d "$global_dir" ]; then
-        local latest=$(ls -t "$global_dir"/*.md 2>/dev/null | head -1)
-        if [ -n "$latest" ]; then
-            echo "$latest"
-            return 0
-        fi
-    fi
-
-    return 1
-}
-
-# Resolve which snapshot to offer. An explicit TUI selection (pending-restore
-# marker) wins over the newest restart snapshot. The marker is single-use.
-resolve_snapshot() {
-    if [ -f "$PENDING_MARKER" ]; then
-        local pending
-        pending="$(head -1 "$PENDING_MARKER" 2>/dev/null || true)"
-        # Consume the marker regardless of whether its target is still valid.
-        rm -f "$PENDING_MARKER"
-        if [ -n "$pending" ] && [ -f "$pending" ]; then
-            debug_log "Using pending-restore marker: $pending"
-            echo "$pending"
-            return 0
-        fi
-        debug_log "Stale pending-restore marker cleared, falling back to newest"
-    fi
-
-    find_latest_snapshot
 }
 
 # Escape string for JSON embedding
@@ -85,41 +64,152 @@ escape_for_json() {
     printf '%s' "$output"
 }
 
-# Check for snapshot (pending-restore selection wins over newest)
-LATEST=$(resolve_snapshot || echo "")
-debug_log "LATEST=$LATEST"
+# Extract the title from a snapshot's frontmatter.
+extract_title() {
+    grep -m1 '^title:' "$1" 2>/dev/null | sed 's/^title:[[:space:]]*//; s/^"//; s/"$//' || true
+}
 
-if [ -n "$LATEST" ] && [ -f "$LATEST" ]; then
-    debug_log "Found snapshot, preparing context injection"
+# Extract the created timestamp from a snapshot's frontmatter.
+extract_created() {
+    grep -m1 '^created:' "$1" 2>/dev/null | sed 's/^created:[[:space:]]*//' || true
+}
 
-    # Extract metadata from snapshot
-    TITLE=$(grep -m1 '^title:' "$LATEST" 2>/dev/null | sed 's/^title:[[:space:]]*//; s/^"//; s/"$//' || echo "Untitled Session")
-    CREATED=$(grep -m1 '^created:' "$LATEST" 2>/dev/null | sed 's/^created:[[:space:]]*//' || echo "unknown")
+# Convert a possibly-relative path into an absolute one.
+to_absolute() {
+    local p="$1"
+    printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
+}
 
-    # Read resume skill content
-    RESUME_SKILL=$(cat "${PLUGIN_ROOT}/skills/resume/SKILL.md" 2>/dev/null || echo "Error reading resume skill")
+# Gather active (non-archived) snapshots newest-first as absolute paths.
+# Project-local restarts/ + saved/ take precedence; otherwise the global store
+# is used. The glob only matches files directly in each dir, so archived/ is
+# intentionally excluded (see scripts/archive-snapshot.sh).
+gather_snapshots() {
+    local base list f
+    for base in ".claude/sessions" "$HOME/.claude/sessions"; do
+        list=$(ls -t "$base"/restarts/*.md "$base"/saved/*.md 2>/dev/null || true)
+        if [ -n "$list" ]; then
+            while IFS= read -r f; do
+                [ -n "$f" ] || continue
+                to_absolute "$f"
+            done <<< "$list"
+            return 0
+        fi
+    done
+    return 1
+}
 
-    # Read full snapshot content for context
-    SNAPSHOT_CONTENT=$(cat "$LATEST" 2>/dev/null || echo "Error reading snapshot")
+# Resume prompt disabled in settings -> stay silent (#62).
+if [ "$(read_setting '.behavior.resumePrompt' 'resumePrompt')" = "false" ]; then
+    debug_log "resumePrompt disabled in settings, skipping injection"
+    exit 0
+fi
 
-    # Escape for JSON
-    TITLE_ESCAPED=$(escape_for_json "$TITLE")
-    CREATED_ESCAPED=$(escape_for_json "$CREATED")
-    RESUME_SKILL_ESCAPED=$(escape_for_json "$RESUME_SKILL")
-    SNAPSHOT_ESCAPED=$(escape_for_json "$SNAPSHOT_CONTENT")
-    LATEST_ESCAPED=$(escape_for_json "$LATEST")
+# Detect the SessionStart source from stdin. compact/clear should NOT re-inject
+# full content (#64); startup/resume get the full snapshot. Reading is guarded so
+# an interactive terminal (no piped payload) never blocks.
+SOURCE=""
+if [ ! -t 0 ]; then
+    STDIN_JSON=$(cat 2>/dev/null || true)
+    if [ -n "$STDIN_JSON" ]; then
+        if command -v jq >/dev/null 2>&1; then
+            SOURCE=$(printf '%s' "$STDIN_JSON" | jq -r '.source // empty' 2>/dev/null || true)
+        else
+            SOURCE=$(printf '%s' "$STDIN_JSON" \
+                | grep -o '"source"[[:space:]]*:[[:space:]]*"[^"]*"' \
+                | head -1 \
+                | sed 's/.*"source"[[:space:]]*:[[:space:]]*"//; s/"$//' || true)
+        fi
+    fi
+fi
+debug_log "SOURCE=$SOURCE"
 
-    # Output context injection
+# Resolve the featured snapshot. An explicit TUI selection (pending-restore
+# marker) wins and suppresses the picker; the marker is single-use.
+MARKED=""
+if [ -f "$PENDING_MARKER" ]; then
+    PENDING="$(head -1 "$PENDING_MARKER" 2>/dev/null || true)"
+    rm -f "$PENDING_MARKER"
+    if [ -n "$PENDING" ] && [ -f "$PENDING" ]; then
+        debug_log "Using pending-restore marker: $PENDING"
+        MARKED="$PENDING"
+    else
+        debug_log "Stale pending-restore marker cleared, falling back to newest"
+    fi
+fi
+
+if [ -n "$MARKED" ]; then
+    SNAPSHOTS="$MARKED"
+else
+    SNAPSHOTS="$(gather_snapshots || true)"
+fi
+
+PRIMARY="$(head -1 <<< "$SNAPSHOTS")"
+if [ -z "$PRIMARY" ] || [ ! -f "$PRIMARY" ]; then
+    debug_log "No snapshot found, clean start"
+    exit 0
+fi
+
+TITLE="$(extract_title "$PRIMARY")"
+[ -n "$TITLE" ] || TITLE="Untitled Session"
+CREATED="$(extract_created "$PRIMARY")"
+[ -n "$CREATED" ] || CREATED="unknown"
+
+TITLE_ESCAPED=$(escape_for_json "$TITLE")
+CREATED_ESCAPED=$(escape_for_json "$CREATED")
+PRIMARY_ESCAPED=$(escape_for_json "$PRIMARY")
+
+# Minimal injection for post-compaction/clear: a pointer, never the full body,
+# so compaction does not re-bloat the context (#64).
+if [ "$SOURCE" = "compact" ] || [ "$SOURCE" = "clear" ]; then
+    debug_log "Minimal injection for source=$SOURCE"
     cat <<EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": "<BLINK_SESSION_AVAILABLE>\\nA previous session snapshot was detected.\\n\\n**Snapshot Details:**\\n- Title: ${TITLE_ESCAPED}\\n- Created: ${CREATED_ESCAPED}\\n- Path: ${LATEST_ESCAPED}\\n\\n**You MUST follow the resume skill below to present options to the user:**\\n\\n${RESUME_SKILL_ESCAPED}\\n\\n**Snapshot Content (for restore):**\\n\\n${SNAPSHOT_ESCAPED}\\n</BLINK_SESSION_AVAILABLE>"
+    "additionalContext": "<BLINK_SESSION_AVAILABLE>\\nA Blink snapshot is available (context was just compacted; full content is intentionally not re-injected).\\n- Title: ${TITLE_ESCAPED}\\n- Created: ${CREATED_ESCAPED}\\n- Path: ${PRIMARY_ESCAPED}\\n\\nRun the blink:resume skill or read the snapshot path above if you need to restore it.\\n</BLINK_SESSION_AVAILABLE>"
   }
 }
 EOF
-else
-    debug_log "No snapshot found, clean start"
+    exit 0
 fi
+
+# Full injection for startup/resume.
+RESUME_SKILL=$(cat "${PLUGIN_ROOT}/skills/resume/SKILL.md" 2>/dev/null || echo "Error reading resume skill")
+SNAPSHOT_CONTENT=$(cat "$PRIMARY" 2>/dev/null || echo "Error reading snapshot")
+RESUME_SKILL_ESCAPED=$(escape_for_json "$RESUME_SKILL")
+SNAPSHOT_ESCAPED=$(escape_for_json "$SNAPSHOT_CONTENT")
+
+# Build the recent-snapshot picker list (#59). The featured snapshot is #1; the
+# rest are alternates the user can choose by number.
+RECENT_LIST=""
+INDEX=0
+while IFS= read -r SNAP; do
+    [ -n "$SNAP" ] || continue
+    INDEX=$((INDEX + 1))
+    [ "$INDEX" -gt "$PICKER_LIMIT" ] && break
+    SNAP_TITLE="$(extract_title "$SNAP")"
+    [ -n "$SNAP_TITLE" ] || SNAP_TITLE="Untitled Session"
+    SNAP_CREATED="$(extract_created "$SNAP")"
+    [ -n "$SNAP_CREATED" ] || SNAP_CREATED="unknown"
+    RECENT_LIST+="${INDEX}. \"${SNAP_TITLE}\" — ${SNAP_CREATED}"$'\n'
+    RECENT_LIST+="     ${SNAP}"$'\n'
+done <<< "$SNAPSHOTS"
+
+# Only surface the picker section when there is more than one option.
+RECENT_SECTION=""
+if [ "$INDEX" -gt 1 ]; then
+    RECENT_SECTION=$'\n\n**Recent snapshots (the user may pick one by number):**\n\n'"$RECENT_LIST"
+fi
+RECENT_SECTION_ESCAPED=$(escape_for_json "$RECENT_SECTION")
+
+cat <<EOF
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "<BLINK_SESSION_AVAILABLE>\\nA previous session snapshot was detected.\\n\\n**Snapshot Details:**\\n- Title: ${TITLE_ESCAPED}\\n- Created: ${CREATED_ESCAPED}\\n- Path: ${PRIMARY_ESCAPED}${RECENT_SECTION_ESCAPED}\\n\\n**You MUST follow the resume skill below to present options to the user:**\\n\\n${RESUME_SKILL_ESCAPED}\\n\\n**Snapshot Content (for restore):**\\n\\n${SNAPSHOT_ESCAPED}\\n</BLINK_SESSION_AVAILABLE>"
+  }
+}
+EOF
 
 exit 0

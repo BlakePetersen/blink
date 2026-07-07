@@ -10,10 +10,18 @@ You are creating a session snapshot for handoff to the next Claude instance.
 
 ## Step 1: Get snapshot filepath
 
-Run this command to get the filepath:
+Run this command to get the filepath. The second argument is the global flag —
+`false` writes into the current project's `.claude/sessions/`, `true` writes
+into `~/.claude/sessions/` so the handoff is available everywhere. Default to
+project-local; use `true` only when the user asks to restart **globally** (e.g.
+`/blink-restart --global`).
 
 ```bash
+# Project-local (default)
 "${CLAUDE_PLUGIN_ROOT}/scripts/create-snapshot.sh" restart false
+
+# Global (when the user requested --global)
+"${CLAUDE_PLUGIN_ROOT}/scripts/create-snapshot.sh" restart true
 ```
 
 ## Step 2: Create the snapshot
