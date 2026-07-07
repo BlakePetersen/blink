@@ -1,7 +1,7 @@
 // ABOUTME: Main App component for Blink TUI
 // ABOUTME: Manages state, keyboard input, and responsive layout
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';
 import { Header } from './components/Header.js';
 import { ThemeProvider } from './lib/theme.js';
@@ -15,6 +15,7 @@ import { SessionGroup, Session, ParseError } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
 import { getLayoutMode, calculatePaneWidths, getHeaderSize } from './lib/layout.js';
+import { clampIndex } from './lib/list-view.js';
 import { HEADER_HEIGHTS } from './lib/ascii-art.js';
 import { useTerminalSize } from './lib/useTerminalSize.js';
 
@@ -41,6 +42,7 @@ export function App({ cwd, onSelect }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Fixed values until drag-to-resize is implemented
   const splitRatio = 0.4;
   const isDragging = false;
@@ -55,6 +57,14 @@ export function App({ cwd, onSelect }: Props) {
   const selectedItem = listItems[selectedIndex] ?? null;
   const selectedSession = selectedItem?.kind === 'session' ? selectedItem.session : null;
   const selectedError = selectedItem?.kind === 'error' ? selectedItem.error : null;
+  const hasAnySessions = allGroups.some(group => group.sessions.length > 0);
+  const hasActiveFilter = searchQuery.length > 0 || selectedTags.length > 0;
+
+  // Keep the selection in range when a live filter shrinks the list, otherwise
+  // getSessionAtIndex returns null and the preview blanks out (issue #45).
+  useEffect(() => {
+    setSelectedIndex(i => clampIndex(totalSessions, i));
+  }, [totalSessions]);
 
   // Layout calculations
   const layoutMode = getLayoutMode(width);
@@ -77,11 +87,19 @@ export function App({ cwd, onSelect }: Props) {
     // Handle delete confirmation
     if (confirmDelete) {
       if (input === 'y' || input === 'Y') {
-        deleteSession(confirmDelete);
+        const deleted = deleteSession(confirmDelete);
+        if (!deleted) {
+          // Delete failed (e.g. unwritable file). Surface it and leave the
+          // list and selection untouched (issue #47).
+          setDeleteError(`Could not delete "${confirmDelete.title}"`);
+          setConfirmDelete(null);
+          return;
+        }
         const reloaded = loadAllSessions(cwd);
         setAllGroups(reloaded.groups);
         setParseErrors(reloaded.parseErrors);
         setConfirmDelete(null);
+        setDeleteError(null);
         if (selectedIndex >= totalSessions - 1) {
           setSelectedIndex(Math.max(0, selectedIndex - 1));
         }
@@ -89,6 +107,11 @@ export function App({ cwd, onSelect }: Props) {
         setConfirmDelete(null);
       }
       return;
+    }
+
+    // Any keypress in normal mode dismisses a stale delete-error line.
+    if (deleteError) {
+      setDeleteError(null);
     }
 
     // Handle search mode
@@ -143,7 +166,17 @@ export function App({ cwd, onSelect }: Props) {
       setAllGroups([fixtureGroup]);
       setParseErrors([]);
       setSelectedIndex(0);
-    } else if (input === 'q' || key.escape) {
+    } else if (key.escape) {
+      // esc clears any active filter first; only quits from a clean state so a
+      // reflexive second esc after leaving search does not lose context (#46).
+      if (hasActiveFilter) {
+        setSearchQuery('');
+        setSelectedTags([]);
+        setSelectedIndex(0);
+      } else {
+        exit();
+      }
+    } else if (input === 'q') {
       exit();
     }
   });
@@ -198,6 +231,8 @@ export function App({ cwd, onSelect }: Props) {
             selectedIndex={selectedIndex}
             width={paneWidths.list}
             height={listHeight}
+            hasAnySessions={hasAnySessions}
+            searchQuery={searchQuery}
           />
 
           {/* Divider (side-by-side only) */}
@@ -218,10 +253,14 @@ export function App({ cwd, onSelect }: Props) {
           />
         </Box>
 
+        {/* Transient delete-failure notice */}
+        {deleteError && (
+          <Text color="red">{deleteError}</Text>
+        )}
+
         {/* Footer */}
         <Keybindings
           isSearching={isSearching}
-          isDeleting={!!confirmDelete}
           currentIndex={selectedIndex}
           totalCount={totalSessions}
           width={width}

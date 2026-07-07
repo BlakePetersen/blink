@@ -5,10 +5,10 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { useTheme } from '../lib/theme.js';
 import { isDevMode } from '../lib/dev-mode.js';
+import { positionLabel } from '../lib/list-view.js';
 
 interface Props {
   isSearching: boolean;
-  isDeleting?: boolean;
   currentIndex: number;
   totalCount: number;
   width: number;
@@ -16,7 +16,6 @@ interface Props {
 
 export function Keybindings({
   isSearching,
-  isDeleting,
   currentIndex,
   totalCount,
   width,
@@ -25,20 +24,6 @@ export function Keybindings({
   const { colors } = settings;
 
   const isNarrow = width < 80;
-
-  if (isDeleting) {
-    return (
-      <Box justifyContent="space-between" width={width}>
-        <Box gap={2}>
-          <Text>
-            <Text color={colors.accent1}>y</Text>
-            <Text dimColor> confirm</Text>
-          </Text>
-          <Text dimColor>any key cancel</Text>
-        </Box>
-      </Box>
-    );
-  }
 
   if (isSearching) {
     return (
@@ -61,7 +46,7 @@ export function Keybindings({
     <Box justifyContent="space-between" width={width}>
       <Box gap={2}>
         <Text>
-          <Text color={colors.accent1}>↑↓</Text>
+          <Text color={colors.accent1}>{isNarrow ? '↑↓' : '↑↓/jk'}</Text>
           <Text dimColor>{isNarrow ? '' : ' navigate'}</Text>
         </Text>
         <Text>
@@ -77,6 +62,10 @@ export function Keybindings({
           <Text dimColor>{isNarrow ? '' : ' delete'}</Text>
         </Text>
         <Text>
+          <Text color={colors.accent1}>esc</Text>
+          <Text dimColor>{isNarrow ? '' : ' clear/quit'}</Text>
+        </Text>
+        <Text>
           <Text color={colors.accent1}>q</Text>
           <Text dimColor>{isNarrow ? '' : ' quit'}</Text>
         </Text>
@@ -87,9 +76,7 @@ export function Keybindings({
           </Text>
         )}
       </Box>
-      <Text dimColor>
-        {currentIndex + 1}/{totalCount}
-      </Text>
+      <Text dimColor>{positionLabel(currentIndex, totalCount)}</Text>
     </Box>
   );
 }

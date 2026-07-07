@@ -1,11 +1,12 @@
 // ABOUTME: Filter bar with tag chips and search input
-// ABOUTME: Full-width bar with background, pulsing cursor when searching
+// ABOUTME: Full-width single-line bar; chips truncate to fit the terminal width
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import { useTheme } from '../lib/theme.js';
 import { BACKGROUNDS } from '../lib/backgrounds.js';
+import { chipLabel, fitChips } from '../lib/chips.js';
 
 interface Props {
   tags: string[];
@@ -15,8 +16,10 @@ interface Props {
   onSearchChange: (query: string) => void;
   onSearchSubmit: () => void;
   width: number;
-  maxTags?: number;
 }
+
+// Leading + trailing padding cells that frame the bar.
+const EDGE_PADDING = 2;
 
 export function FilterBar({
   tags,
@@ -26,25 +29,31 @@ export function FilterBar({
   onSearchChange,
   onSearchSubmit,
   width,
-  maxTags = 5,
 }: Props) {
-  const { settings, reducedMotion } = useTheme();
+  const { settings } = useTheme();
   const { colors } = settings;
-  const [cursorVisible, setCursorVisible] = useState(true);
 
-  // Pulsing cursor effect
-  useEffect(() => {
-    if (!isSearching || reducedMotion) return;
-    const interval = setInterval(() => {
-      setCursorVisible(v => !v);
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isSearching, reducedMotion]);
+  // Reserve width for the search region so chips never push the bar to wrap.
+  const searchReserve = isSearching
+    ? 'search: '.length + searchQuery.length
+    : '/ to search'.length;
 
-  const visibleTags = tags.slice(0, maxTags);
-  const hiddenCount = tags.length - maxTags;
+  // Budget left for chips: total minus both edge paddings, the search region,
+  // and one column of breathing room between chips and search.
+  const chipBudget = Math.max(0, width - EDGE_PADDING * 2 - searchReserve - 1);
 
-  // Build the tags content
+  const { visibleTags, overflow, chipsWidth } = useMemo(() => {
+    const labels = tags.map(tag => chipLabel(tag, selectedTags.includes(tag)));
+    const { visible, overflow } = fitChips(labels, chipBudget);
+    const marker = overflow > 0 ? `+${overflow}` : '';
+    const rendered = [...visible, ...(marker ? [marker] : [])].join(' ');
+    return {
+      visibleTags: tags.slice(0, visible.length),
+      overflow,
+      chipsWidth: rendered.length,
+    };
+  }, [tags, selectedTags, chipBudget]);
+
   const tagsContent = useMemo(() => {
     const parts: React.ReactNode[] = [];
     visibleTags.forEach((tag, idx) => {
@@ -59,22 +68,21 @@ export function FilterBar({
           backgroundColor={isActive ? colors.accent2 : BACKGROUNDS.filterBar}
           dimColor={!isActive}
         >
-          [{tag}]
+          {chipLabel(tag, isActive)}
         </Text>
       );
     });
-    if (hiddenCount > 0) {
+    if (overflow > 0) {
       parts.push(<Text key="sep-more" backgroundColor={BACKGROUNDS.filterBar}> </Text>);
       parts.push(
         <Text key="more" dimColor backgroundColor={BACKGROUNDS.filterBar}>
-          [+{hiddenCount} more]
+          +{overflow}
         </Text>
       );
     }
     return parts;
-  }, [visibleTags, selectedTags, hiddenCount, colors.accent2, colors.accent3]);
+  }, [visibleTags, selectedTags, overflow, colors.accent2, colors.accent3]);
 
-  // Build the search content
   const searchContent = useMemo(() => {
     if (isSearching) {
       return (
@@ -84,10 +92,8 @@ export function FilterBar({
             value={searchQuery}
             onChange={onSearchChange}
             onSubmit={onSearchSubmit}
+            showCursor
           />
-          <Text color="cyan" backgroundColor={BACKGROUNDS.filterBar}>
-            {cursorVisible ? '█' : ' '}
-          </Text>
         </>
       );
     }
@@ -96,14 +102,14 @@ export function FilterBar({
         / to search
       </Text>
     );
-  }, [isSearching, searchQuery, onSearchChange, onSearchSubmit, cursorVisible]);
+  }, [isSearching, searchQuery, onSearchChange, onSearchSubmit]);
 
-  // Calculate padding needed to fill the width
-  const tagsText = visibleTags.map(t => `[${t}]`).join(' ');
-  const moreText = hiddenCount > 0 ? ` [+${hiddenCount} more]` : '';
-  const searchText = isSearching ? `search: ${searchQuery}█` : '/ to search';
-  const contentWidth = tagsText.length + moreText.length + searchText.length + 4; // 4 for padding
-  const fillWidth = Math.max(0, width - contentWidth);
+  // Fill the gap between chips and the search region so the background spans
+  // the full width on a single line.
+  const fillWidth = Math.max(
+    0,
+    width - EDGE_PADDING * 2 - chipsWidth - searchReserve
+  );
 
   return (
     <Box width={width}>

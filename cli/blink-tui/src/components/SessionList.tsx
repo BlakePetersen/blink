@@ -7,6 +7,7 @@ import { SessionGroup, Session, ParseError } from '../lib/types.js';
 import { useTheme } from '../lib/theme.js';
 import { adjustBrightness, interpolateColor } from '../lib/animation.js';
 import { computeVisibleWindow } from '../lib/viewport.js';
+import { emptyStateMessage } from '../lib/list-view.js';
 
 interface Props {
   groups: SessionGroup[];
@@ -14,6 +15,8 @@ interface Props {
   selectedIndex: number;
   width: number;
   height?: number;
+  hasAnySessions?: boolean;
+  searchQuery?: string;
 }
 
 // A single navigable row in the flat list: either a session or an unreadable file.
@@ -77,6 +80,8 @@ export function SessionList({
   selectedIndex,
   width,
   height,
+  hasAnySessions = false,
+  searchQuery = '',
 }: Props) {
   const { settings, animationState } = useTheme();
   const { colors, animation } = settings;
@@ -115,7 +120,7 @@ export function SessionList({
     return (
       <Box flexDirection="column" width={width} height={height} paddingX={1}>
         <Box paddingLeft={2}>
-          <Text dimColor>No sessions found</Text>
+          <Text dimColor>{emptyStateMessage(hasAnySessions, searchQuery)}</Text>
         </Box>
       </Box>
     );
