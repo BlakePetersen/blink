@@ -2,7 +2,9 @@
 // ABOUTME: Validates header content for each size variant
 
 import { describe, it, expect } from 'vitest';
-import { getHeaderArt, getHeaderLines, HEADER_HEIGHTS } from '../ascii-art.js';
+import { getHeaderArt, getHeaderLines, HEADER_HEIGHTS, PLAIN_HEADER } from '../ascii-art.js';
+
+const ASCII_ONLY = /^[\x00-\x7f]*$/;
 
 describe('ascii-art', () => {
   describe('HEADER_HEIGHTS', () => {
@@ -30,6 +32,26 @@ describe('ascii-art', () => {
       const art = getHeaderArt('minimal');
       expect(art).toContain('BLINK');
       expect(art.split('\n').length).toBe(1);
+    });
+  });
+
+  describe('plain mode', () => {
+    it('exposes a readable ASCII-only plain header', () => {
+      expect(PLAIN_HEADER).toContain('BLINK');
+      expect(PLAIN_HEADER).toMatch(ASCII_ONLY);
+    });
+
+    it('returns a single readable line for any size when plain', () => {
+      for (const size of ['full', 'medium', 'minimal'] as const) {
+        const art = getHeaderArt(size, true);
+        expect(art).toContain('BLINK');
+        expect(art).toMatch(ASCII_ONLY);
+        expect(art.split('\n').length).toBe(1);
+      }
+    });
+
+    it('getHeaderLines returns one line in plain mode', () => {
+      expect(getHeaderLines('full', true).length).toBe(1);
     });
   });
 
