@@ -38,6 +38,10 @@ else
   fi
   # Slugify: lowercase, replace spaces with hyphens, remove special chars
   SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')
+  # Fall back to a timestamp if the slug is empty or only hyphens
+  if [[ ! "$SLUG" =~ [a-z0-9] ]]; then
+    SLUG="session-$(date +"%Y-%m-%dt%H-%M-%S")"
+  fi
   FILENAME="$SLUG.md"
 fi
 

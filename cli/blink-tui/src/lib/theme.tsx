@@ -1,13 +1,15 @@
 // ABOUTME: React context for theme colors and animation state
 // ABOUTME: Provides settings and live animation state to all components
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Settings, loadSettings, saveSettings, applyPreset } from './settings.js';
 import { AnimationState, calculateAnimationState } from './animation.js';
+import { isReducedMotion } from './motion.js';
 
 interface ThemeContextValue {
   settings: Settings;
   animationState: AnimationState;
+  reducedMotion: boolean;
   updateSettings: (updates: Partial<Settings>) => void;
   setTheme: (themeName: string) => void;
 }
@@ -21,8 +23,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
   const [startTime] = useState(() => Date.now());
 
+  const reducedMotion = useMemo(() => isReducedMotion(settings), [settings]);
+
   useEffect(() => {
-    // Skip animation if all effects disabled
+    // Skip animation when reduced motion is active or all effects are disabled
+    if (reducedMotion) {
+      return;
+    }
     if (!settings.animation.cycling &&
         !settings.animation.wave &&
         !settings.animation.shimmer &&
@@ -36,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, settings.animation.speed);
 
     return () => clearInterval(interval);
-  }, [settings.animation, startTime]);
+  }, [settings.animation, startTime, reducedMotion]);
 
   const updateSettings = useCallback((updates: Partial<Settings>) => {
     setSettings(prev => {
@@ -58,7 +65,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ settings, animationState, updateSettings, setTheme }}>
+    <ThemeContext.Provider value={{ settings, animationState, reducedMotion, updateSettings, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

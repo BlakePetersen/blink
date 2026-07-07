@@ -7,6 +7,7 @@ import * as os from 'node:os';
 
 export interface AnimationSettings {
   speed: number;
+  reducedMotion: boolean;
   cycling: boolean;
   wave: boolean;
   shimmer: boolean;
@@ -37,6 +38,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
     },
     animation: {
       speed: 250,
+      reducedMotion: false,
       cycling: true,
       wave: true,
       shimmer: true,
@@ -53,6 +55,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
     },
     animation: {
       speed: 500,
+      reducedMotion: false,
       cycling: true,
       wave: false,
       shimmer: false,
@@ -69,6 +72,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
     },
     animation: {
       speed: 150,
+      reducedMotion: false,
       cycling: true,
       wave: true,
       shimmer: true,
@@ -85,6 +89,7 @@ export const THEME_PRESETS: Record<string, Settings> = {
     },
     animation: {
       speed: 300,
+      reducedMotion: false,
       cycling: true,
       wave: true,
       shimmer: false,

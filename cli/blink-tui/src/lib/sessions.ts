@@ -10,7 +10,20 @@ import { config, getProjectPaths } from './config.js';
 export function parseSession(filePath: string): ParseResult {
   try {
     const content = readFileSync(filePath, 'utf-8');
-    const { data, content: body } = matter(content);
+    // Force the YAML engine and disable eval-capable engines. A snapshot file's
+    // own fence token (e.g. `---js`) would otherwise select gray-matter's
+    // `javascript` engine and eval its frontmatter. See advisory GHSA-57fp-36cq-pwwp.
+    const { data, content: body } = matter(content, {
+      language: 'yaml',
+      engines: {
+        javascript: () => {
+          throw new Error('JavaScript frontmatter is disabled');
+        },
+        js: () => {
+          throw new Error('JavaScript frontmatter is disabled');
+        },
+      },
+    });
 
     // Extract sections from body
     const workingOnMatch = body.match(/## Working On\n([\s\S]*?)(?=\n##|$)/);

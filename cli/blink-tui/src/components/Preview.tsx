@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function Preview({ session, parseError, width, height }: Props) {
-  const { settings, animationState } = useTheme();
+  const { settings, animationState, reducedMotion } = useTheme();
   const { colors, animation } = settings;
   const { cyclePosition, elapsed } = animationState;
 
@@ -33,11 +33,11 @@ export function Preview({ session, parseError, width, height }: Props) {
   // Tag color with shimmer effect
   const getTagColor = useCallback((tagIndex: number): string => {
     const baseColor = colors.accent3;
-    if (animation.shimmer && shouldShimmer(tagIndex + 100, elapsed, 0.015)) {
+    if (!reducedMotion && animation.shimmer && shouldShimmer(tagIndex + 100, elapsed, 0.015, animation.speed)) {
       return brightenColor(baseColor, 0.6);
     }
     return baseColor;
-  }, [colors.accent3, animation.shimmer, elapsed]);
+  }, [colors.accent3, animation.shimmer, animation.speed, elapsed, reducedMotion]);
 
   if (parseError) {
     const name = parseError.file.split('/').pop() ?? parseError.file;
