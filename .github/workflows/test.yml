@@ -30,3 +30,14 @@ jobs:
 
       - name: Build
         run: cd cli/blink-tui && pnpm build
+
+  bash-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run snapshot tests
+        run: ./tests/test-create-snapshot.sh
+
+      - name: Run session-start hook tests
+        run: ./tests/test-session-start-hook.sh
