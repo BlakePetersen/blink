@@ -7,6 +7,8 @@ import { Box, Text, useInput, useApp, useStdout, useStdin } from 'ink';
 import TextInput from 'ink-text-input';
 import { Header } from './components/Header.js';
 import { ThemeProvider } from './lib/theme.js';
+import { SettingsTUI } from './components/SettingsTUI.js';
+import { loadSettings, saveSettings } from './lib/settings.js';
 import { SessionList, buildListItems } from './components/SessionList.js';
 import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
@@ -56,6 +58,7 @@ export function App({ cwd, onSelect }: Props) {
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   // Rename/retag text-input prompt (issue #60) and transient action feedback.
   const [promptMode, setPromptMode] = useState<'rename' | 'retag' | null>(null);
   const [promptValue, setPromptValue] = useState('');
@@ -167,6 +170,11 @@ export function App({ cwd, onSelect }: Props) {
 
   // Keyboard handling
   useInput((input, key) => {
+    // While the settings overlay is open it owns keyboard input.
+    if (showSettings) {
+      return;
+    }
+
     // Handle delete confirmation
     if (confirmDelete) {
       if (input === 'y' || input === 'Y') {
@@ -246,6 +254,8 @@ export function App({ cwd, onSelect }: Props) {
       if (selectedSession) {
         setConfirmDelete(selectedSession);
       }
+    } else if (input === 's') {
+      setShowSettings(true);
     } else if (input === 'n') {
       if (selectedSession) {
         setPromptMode('rename');
@@ -313,6 +323,23 @@ export function App({ cwd, onSelect }: Props) {
     setIsSearching(false);
     setSelectedIndex(0);
   };
+
+  // Settings overlay (reachable via the `s` key from the browser)
+  if (showSettings) {
+    return (
+      <ThemeProvider>
+        <SettingsTUI
+          initialSettings={loadSettings()}
+          onSave={(next) => {
+            saveSettings(next);
+            setShowSettings(false);
+          }}
+          onCancel={() => setShowSettings(false)}
+          standalone={false}
+        />
+      </ThemeProvider>
+    );
+  }
 
   // Rename/retag prompt overlay
   if (promptMode) {

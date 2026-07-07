@@ -9,6 +9,7 @@ import {
   THEME_PRESETS,
   DEFAULT_SETTINGS,
   applyThemeToSettings,
+  previewSwatch,
   snapSpeedToBucket,
 } from '../lib/settings.js';
 
@@ -16,6 +17,9 @@ interface Props {
   initialSettings: Settings;
   onSave: (settings: Settings) => void;
   onCancel: () => void;
+  // When true (standalone binary) the component exits the Ink app on save/cancel.
+  // When false (inline overlay) the parent handles closing via the callbacks.
+  standalone?: boolean;
 }
 
 type SpeedOption = 'slow' | 'balanced' | 'fast';
@@ -61,8 +65,11 @@ const MENU_ITEMS: MenuItem[] = [
   { type: 'button', id: 'cancel', label: 'Cancel' },
 ];
 
-export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
+export function SettingsTUI({ initialSettings, onSave, onCancel, standalone = true }: Props) {
   const { exit } = useApp();
+  const close = () => {
+    if (standalone) exit();
+  };
   const [settings, setSettings] = useState<Settings>(() => ({
     ...initialSettings,
     animation: {
@@ -155,20 +162,22 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
     } else if (key.return) {
       if (item.id === 'save') {
         onSave(settings);
-        exit();
+        close();
       } else if (item.id === 'reset') {
         setSettings({ ...DEFAULT_SETTINGS });
       } else if (item.id === 'cancel') {
         onCancel();
-        exit();
+        close();
       } else if (item.type === 'toggle') {
         toggleItem(item.id);
       }
     } else if (key.escape || input === 'q') {
       onCancel();
-      exit();
+      close();
     }
   });
+
+  const swatch = previewSwatch(settings.colors);
 
   const renderDropdown = (id: string, label: string, value: string, focused: boolean) => (
     <Box>
@@ -213,6 +222,14 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
 
         {/* Theme dropdown */}
         {renderDropdown('theme', 'Theme', settings.theme, focusIndex === 0)}
+
+        {/* Live swatch of the candidate theme's colors so users don't pick blind */}
+        <Box>
+          <Text>{'    '}</Text>
+          {swatch.map((hex, i) => (
+            <Text key={`${hex}-${i}`} color={hex}>██</Text>
+          ))}
+        </Box>
 
         <Box marginTop={1} marginBottom={1}>
           <Text dimColor>--- Animation ---</Text>

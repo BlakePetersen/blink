@@ -45,11 +45,26 @@ read_setting() {
     fi
 }
 
-# Escape string for JSON embedding
+# Escape a string for embedding inside a JSON string literal. Prefers jq, which
+# correctly encodes every control character; the value is returned WITHOUT the
+# surrounding quotes since callers embed it inside their own quotes. Falls back
+# to a bash loop that emits \uXXXX for any C0 control char (< 0x20) so a stray
+# ESC or other control byte can never produce invalid JSON (#41).
 escape_for_json() {
     local input="$1"
-    local output=""
-    local i char
+    if command -v jq >/dev/null 2>&1; then
+        local encoded
+        # If jq is present but somehow fails, fall through to the bash loop
+        # rather than aborting under `set -e` (which would drop the injection).
+        if encoded=$(printf '%s' "$input" | jq -Rs . 2>/dev/null) && [ -n "$encoded" ]; then
+            # Strip the leading and trailing quote jq adds around the string.
+            encoded=${encoded#\"}
+            encoded=${encoded%\"}
+            printf '%s' "$encoded"
+            return 0
+        fi
+    fi
+    local output="" i char code hex
     for (( i=0; i<${#input}; i++ )); do
         char="${input:$i:1}"
         case "$char" in
@@ -58,7 +73,15 @@ escape_for_json() {
             $'\n') output+='\n' ;;
             $'\r') output+='\r' ;;
             $'\t') output+='\t' ;;
-            *) output+="$char" ;;
+            *)
+                printf -v code '%d' "'$char" 2>/dev/null || code=32
+                if [ "$code" -ge 0 ] && [ "$code" -lt 32 ]; then
+                    printf -v hex '%04x' "$code"
+                    output+="\\u${hex}"
+                else
+                    output+="$char"
+                fi
+                ;;
         esac
     done
     printf '%s' "$output"
@@ -74,6 +97,26 @@ extract_created() {
     grep -m1 '^created:' "$1" 2>/dev/null | sed 's/^created:[[:space:]]*//' || true
 }
 
+# Extract the project path recorded in a snapshot's frontmatter, stripping any
+# surrounding quotes. Used to scope the global fallback to this project (#42).
+extract_project() {
+    grep -m1 '^project:' "$1" 2>/dev/null | sed 's/^project:[[:space:]]*//; s/^"//; s/"$//' || true
+}
+
+# Modification time as an epoch value, preferring sub-second precision. Tries
+# GNU stat first, then BSD, so ordering is correct on Linux and macOS alike.
+# GNU stat is tried first on purpose: BSD's `stat -c` exits nonzero cleanly on
+# macOS, whereas GNU's `stat -f` means "filesystem status" and would emit stray
+# `File: ...` text that contaminates the path if tried first on Linux.
+stat_mtime() {
+    stat -c '%.9Y' "$1" 2>/dev/null || stat -f '%Fm' "$1" 2>/dev/null || echo 0
+}
+
+# The project the current session is running in. The global snapshot store is
+# only surfaced for snapshots whose `project:` frontmatter matches this path, so
+# another project's snapshot (and its absolute paths) never leaks in (#42).
+CURRENT_PROJECT="$(pwd)"
+
 # Convert a possibly-relative path into an absolute one.
 to_absolute() {
     local p="$1"
@@ -82,19 +125,26 @@ to_absolute() {
 
 # Gather active (non-archived) snapshots newest-first as absolute paths.
 # Project-local restarts/ + saved/ take precedence; otherwise the global store
-# is used. The glob only matches files directly in each dir, so archived/ is
-# intentionally excluded (see scripts/archive-snapshot.sh).
+# is used but scoped to snapshots created for THIS project (#42). find -maxdepth
+# 1 only matches files directly in each dir, so archived/ is intentionally
+# excluded, and stat-based mtime sorting replaces the fragile `ls -t` (#41).
 gather_snapshots() {
-    local base list f
+    local base f ranked line
     for base in ".claude/sessions" "$HOME/.claude/sessions"; do
-        list=$(ls -t "$base"/restarts/*.md "$base"/saved/*.md 2>/dev/null || true)
-        if [ -n "$list" ]; then
-            while IFS= read -r f; do
-                [ -n "$f" ] || continue
-                to_absolute "$f"
-            done <<< "$list"
-            return 0
-        fi
+        ranked=""
+        while IFS= read -r -d '' f; do
+            if [ "$base" = "$HOME/.claude/sessions" ]; then
+                [ "$(extract_project "$f")" = "$CURRENT_PROJECT" ] || continue
+            fi
+            ranked+="$(printf '%s\t%s' "$(stat_mtime "$f")" "$f")"$'\n'
+        done < <(find "$base/restarts" "$base/saved" -maxdepth 1 -type f -name '*.md' -print0 2>/dev/null)
+        [ -n "$ranked" ] || continue
+        # Newest first by mtime; strip the sort key and emit absolute paths.
+        printf '%s' "$ranked" | sort -rn | while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            to_absolute "${line#*$'\t'}"
+        done
+        return 0
     done
     return 1
 }

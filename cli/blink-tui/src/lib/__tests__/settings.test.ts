@@ -11,6 +11,9 @@ import {
   DEFAULT_BEHAVIOR,
   DEFAULT_SETTINGS,
   loadSettings,
+  mergeSettings,
+  persistSettings,
+  previewSwatch,
   snapSpeedToBucket,
   THEME_PRESETS,
   type Settings,
@@ -232,6 +235,73 @@ describe('settings', () => {
       expect(result.behavior.resumePrompt).toBe(DEFAULT_BEHAVIOR.resumePrompt);
       expect(result.behavior.retentionCount).toBe(DEFAULT_BEHAVIOR.retentionCount);
       expect(result.behavior.defaultScope).toBe(DEFAULT_BEHAVIOR.defaultScope);
+    });
+  });
+
+  describe('mergeSettings', () => {
+    it('deep-merges colors and animation without dropping siblings', () => {
+      const next = mergeSettings(DEFAULT_SETTINGS, {
+        animation: { ...DEFAULT_SETTINGS.animation, shimmer: false },
+      });
+      expect(next.animation.shimmer).toBe(false);
+      // Other animation fields are preserved.
+      expect(next.animation.cycling).toBe(DEFAULT_SETTINGS.animation.cycling);
+      // Untouched blocks are preserved.
+      expect(next.colors).toEqual(DEFAULT_SETTINGS.colors);
+    });
+
+    it('does not mutate the source settings', () => {
+      const source = applyPreset('minimal');
+      const snapshot = JSON.parse(JSON.stringify(source));
+      mergeSettings(source, { theme: 'ember' });
+      expect(source).toEqual(snapshot);
+    });
+  });
+
+  describe('previewSwatch', () => {
+    it('returns the base ramp followed by the three accents', () => {
+      const swatch = previewSwatch(DEFAULT_SETTINGS.colors);
+      expect(swatch).toEqual([
+        ...DEFAULT_SETTINGS.colors.base,
+        DEFAULT_SETTINGS.colors.accent1,
+        DEFAULT_SETTINGS.colors.accent2,
+        DEFAULT_SETTINGS.colors.accent3,
+      ]);
+    });
+  });
+
+  describe('persistSettings', () => {
+    let tmpHome: string;
+    let originalHome: string | undefined;
+
+    beforeEach(() => {
+      originalHome = process.env.HOME;
+      tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'blink-persist-'));
+      process.env.HOME = tmpHome;
+    });
+
+    afterEach(() => {
+      if (originalHome === undefined) {
+        delete process.env.HOME;
+      } else {
+        process.env.HOME = originalHome;
+      }
+      fs.rmSync(tmpHome, { recursive: true, force: true });
+    });
+
+    it('writes settings and returns true on success', () => {
+      expect(persistSettings(DEFAULT_SETTINGS)).toBe(true);
+      const saved = loadSettings();
+      expect(saved).toEqual(DEFAULT_SETTINGS);
+    });
+
+    it('returns false without throwing when the write fails', () => {
+      // Plant a regular file where the settings directory tree must live, so
+      // mkdirSync/writeFileSync fail with ENOTDIR - simulating a read-only or
+      // otherwise unwritable target without mocking (unspyable in ESM).
+      fs.writeFileSync(path.join(tmpHome, '.claude'), 'not a directory');
+      expect(() => persistSettings(DEFAULT_SETTINGS)).not.toThrow();
+      expect(persistSettings(DEFAULT_SETTINGS)).toBe(false);
     });
   });
 });
