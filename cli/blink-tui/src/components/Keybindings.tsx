@@ -62,6 +62,10 @@ export function Keybindings({
           <Text dimColor>{isNarrow ? '' : ' delete'}</Text>
         </Text>
         <Text>
+          <Text color={colors.accent1}>s</Text>
+          <Text dimColor>{isNarrow ? '' : ' settings'}</Text>
+        </Text>
+        <Text>
           <Text color={colors.accent1}>esc</Text>
           <Text dimColor>{isNarrow ? '' : ' clear/quit'}</Text>
         </Text>

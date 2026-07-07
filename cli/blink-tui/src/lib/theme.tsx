@@ -1,8 +1,8 @@
 // ABOUTME: React context for theme colors and animation state
 // ABOUTME: Provides settings and live animation state to all components
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { Settings, loadSettings, saveSettings, applyPreset } from './settings.js';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Settings, loadSettings, persistSettings, mergeSettings, applyPreset } from './settings.js';
 import { AnimationState, calculateAnimationState } from './animation.js';
 import { isReducedMotion } from './motion.js';
 import { isPlainMode } from './plain-mode.js';
@@ -28,6 +28,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const reducedMotion = useMemo(() => isReducedMotion(settings), [settings]);
   const plainMode = useMemo(() => isPlainMode(), []);
 
+  // Keep a ref to the latest settings so update handlers can compute the next
+  // value without relying on a possibly-stale closure, and persist it exactly
+  // once outside the state updater (which must stay pure - StrictMode runs it
+  // twice, and an unguarded fs write there would double-write or crash).
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
   useEffect(() => {
     // Skip animation when reduced motion is active or all effects are disabled
     if (reducedMotion) {
@@ -49,22 +58,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [settings.animation, startTime, reducedMotion]);
 
   const updateSettings = useCallback((updates: Partial<Settings>) => {
-    setSettings(prev => {
-      const next = {
-        ...prev,
-        ...updates,
-        colors: { ...prev.colors, ...(updates.colors || {}) },
-        animation: { ...prev.animation, ...(updates.animation || {}) },
-      };
-      saveSettings(next);
-      return next;
-    });
+    const next = mergeSettings(settingsRef.current, updates);
+    setSettings(next);
+    // Persist outside the updater; failure is non-fatal (guarded internally).
+    persistSettings(next);
   }, []);
 
   const setTheme = useCallback((themeName: string) => {
-    const newSettings = applyPreset(themeName);
-    setSettings(newSettings);
-    saveSettings(newSettings);
+    const next = applyPreset(themeName);
+    setSettings(next);
+    persistSettings(next);
   }, []);
 
   return (

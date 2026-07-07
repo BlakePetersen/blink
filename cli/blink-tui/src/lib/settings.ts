@@ -147,6 +147,24 @@ export function applyThemeToSettings(current: Settings, preset: Settings): Setti
   };
 }
 
+// Merge a partial update into the current settings, deep-merging the nested
+// colors and animation blocks. Kept pure so it can run inside or outside a
+// React state updater without triggering side effects.
+export function mergeSettings(current: Settings, updates: Partial<Settings>): Settings {
+  return {
+    ...current,
+    ...updates,
+    colors: { ...current.colors, ...(updates.colors || {}) },
+    animation: { ...current.animation, ...(updates.animation || {}) },
+  };
+}
+
+// Ordered list of the swatch colors for a theme (base ramp + accents). Drives
+// the live preview so users can see a candidate theme before committing to it.
+export function previewSwatch(colors: ColorSettings): string[] {
+  return [...colors.base, colors.accent1, colors.accent2, colors.accent3];
+}
+
 function coerceColor(value: unknown, fallback: string): string {
   return typeof value === 'string' && HEX_COLOR.test(value) ? value : fallback;
 }
@@ -246,6 +264,18 @@ export function saveSettings(settings: Settings): void {
 
   fs.mkdirSync(settingsDir, { recursive: true });
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+}
+
+// Best-effort persistence. A read-only or full disk must never crash the TUI on
+// a settings toggle, so a failed write is swallowed and reported via the return
+// value instead of throwing. Returns true when the write succeeded.
+export function persistSettings(settings: Settings): boolean {
+  try {
+    saveSettings(settings);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function applyPreset(name: string): Settings {
