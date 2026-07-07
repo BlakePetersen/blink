@@ -59,9 +59,11 @@ Load the snapshot context and announce:
 Resuming: [title]. [Brief status]. Continuing with [first next step].
 ```
 
-Then proceed with the next steps from the snapshot.
+Then **consume the snapshot** so it is not offered again (see "Consuming the snapshot" below), and proceed with the next steps from the snapshot.
 
 ### Skip (S)
+
+This is an explicit dismissal, so **consume the snapshot** (see below) before continuing.
 
 If they had a task, help with it:
 ```
@@ -79,10 +81,26 @@ Starting fresh. What are we working on?
 Opening session browser...
 ```
 
-Then invoke the `blink:recall` skill to launch the TUI.
+Then invoke the `blink:recall` skill to launch the TUI. Do **not** consume this
+snapshot on Browse — the browser writes its own pending-restore selection.
+
+## Consuming the snapshot
+
+When the user Restores or Skips, archive the auto-detected restart snapshot so
+the next session start does not re-surface it. The snapshot Path is provided in
+the injected context above.
+
+```bash
+# Only archive auto-detected restart snapshots (path under restarts/).
+# Saved sessions persist by design and must not be archived here.
+case "[PATH]" in
+  */restarts/*) "${CLAUDE_PLUGIN_ROOT}/scripts/archive-snapshot.sh" "[PATH]" ;;
+esac
+```
 
 ## Notes
 
 - Keep it brief - don't block the user
-- Snapshot persists until manually deleted via browser
+- Restored/dismissed restart snapshots are moved to `restarts/archived/` (they
+  survive there for history but are no longer offered on start)
 - If snapshot data is malformed, skip silently and help with their request
