@@ -9,6 +9,11 @@ HOOK_SCRIPT="$SCRIPT_DIR/../hooks/session-start.sh"
 TEST_DIR=$(mktemp -d)
 ORIGINAL_DIR=$(pwd)
 
+# Sandbox HOME so the hook's global fallback ($HOME/.claude/sessions/restarts)
+# resolves inside TEST_DIR and never touches the developer's real home directory.
+export HOME="$TEST_DIR/home"
+mkdir -p "$HOME"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -85,6 +90,7 @@ else
 fi
 
 # Test 5: Global sessions fallback (when no project sessions)
+# HOME is sandboxed to "$TEST_DIR/home", so the global path lives inside TEST_DIR.
 echo "Test 5: Global sessions fallback"
 rm -rf "$TEST_DIR/.claude"
 mkdir -p "$HOME/.claude/sessions/restarts"
@@ -99,9 +105,6 @@ if [[ "$OUTPUT" == *"BLINK_SESSION_AVAILABLE"* ]] && [[ "$OUTPUT" == *"Global Te
 else
   fail "Expected resume context with 'Global Test', got: $OUTPUT"
 fi
-
-# Cleanup global test file
-rm -f "$GLOBAL_FILE"
 
 echo ""
 echo -e "${GREEN}All tests passed!${NC}"
