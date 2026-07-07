@@ -2,7 +2,7 @@
 // ABOUTME: Validates frontmatter parsing, filtering, and edge cases
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync, utimesSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, utimesSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import {
@@ -11,6 +11,8 @@ import {
   parseSession,
   filterSessions,
   getAllTags,
+  updateSession,
+  archiveSession,
 } from '../sessions.js';
 import { Session, SessionGroup } from '../types.js';
 import { FIXTURES_DIR } from '../__fixtures__/index.js';
@@ -349,5 +351,128 @@ describe('filterSessions', () => {
 
   it('returns no groups when nothing matches', () => {
     expect(filterSessions(groups, 'nonexistent', [])).toEqual([]);
+  });
+
+  it('matches a term that appears only in next steps, files, or context', () => {
+    const richGroups = [
+      makeGroup([
+        makeSession({ title: 'Alpha', nextSteps: ['wire up the webhook handler'] }),
+        makeSession({ title: 'Beta', files: ['src/lib/telemetry.ts'] }),
+        makeSession({ title: 'Gamma', context: 'blocked on the staging migration' }),
+      ]),
+    ];
+
+    expect(filterSessions(richGroups, 'webhook', []).flatMap(g => g.sessions.map(s => s.title))).toEqual([
+      'Alpha',
+    ]);
+    expect(filterSessions(richGroups, 'telemetry', []).flatMap(g => g.sessions.map(s => s.title))).toEqual([
+      'Beta',
+    ]);
+    expect(filterSessions(richGroups, 'migration', []).flatMap(g => g.sessions.map(s => s.title))).toEqual([
+      'Gamma',
+    ]);
+  });
+});
+
+describe('updateSession', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'blink-update-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('rewrites the title and tags while preserving the body', () => {
+    const file = join(dir, 'session.md');
+    writeFileSync(
+      file,
+      '---\ntitle: Old Title\ntags:\n  - old\ncreated: 2026-01-01\n---\n## Working On\nImportant body text\n'
+    );
+
+    const ok = updateSession(file, { title: 'New Title', tags: ['fresh', 'auth'] });
+    expect(ok).toBe(true);
+
+    const reparsed = parseSession(file);
+    expect(reparsed.ok).toBe(true);
+    if (reparsed.ok) {
+      expect(reparsed.session.title).toBe('New Title');
+      expect(reparsed.session.tags).toEqual(['fresh', 'auth']);
+      expect(reparsed.session.workingOn).toBe('Important body text');
+    }
+    // Body content survives verbatim.
+    expect(readFileSync(file, 'utf-8')).toContain('Important body text');
+  });
+
+  it('updates only the provided fields', () => {
+    const file = join(dir, 'partial.md');
+    writeFileSync(file, '---\ntitle: Keep Me\ntags:\n  - one\ncreated: 2026-01-01\n---\nbody\n');
+
+    updateSession(file, { tags: ['two'] });
+
+    const reparsed = parseSession(file);
+    if (reparsed.ok) {
+      expect(reparsed.session.title).toBe('Keep Me');
+      expect(reparsed.session.tags).toEqual(['two']);
+    }
+  });
+
+  it('returns false for an unwritable path', () => {
+    expect(updateSession(join(dir, 'missing.md'), { title: 'x' })).toBe(false);
+  });
+});
+
+describe('archiveSession', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'blink-archive-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('moves the snapshot into a sibling archived/ directory', () => {
+    const file = join(dir, 'snap.md');
+    writeFileSync(file, '---\ntitle: Snap\ncreated: 2026-01-01\n---\nbody\n');
+    const session = makeSession({ path: file, title: 'Snap' });
+
+    const result = archiveSession(session);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.dest).toBe(join(dir, 'archived', 'snap.md'));
+      expect(existsSync(result.dest)).toBe(true);
+    }
+    expect(existsSync(file)).toBe(false);
+  });
+
+  it('avoids clobbering an existing archived snapshot of the same name', () => {
+    const archivedDir = join(dir, 'archived');
+    const file = join(dir, 'dup.md');
+    writeFileSync(file, 'new\n');
+    // Pre-seed an archived copy with the same basename.
+    mkdirSync(archivedDir, { recursive: true });
+    writeFileSync(join(archivedDir, 'dup.md'), 'existing\n');
+
+    const session = makeSession({ path: file, title: 'Dup' });
+    const result = archiveSession(session);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.dest).not.toBe(join(archivedDir, 'dup.md'));
+      expect(existsSync(result.dest)).toBe(true);
+      // The pre-existing archived copy is untouched.
+      expect(readFileSync(join(archivedDir, 'dup.md'), 'utf-8')).toBe('existing\n');
+    }
+  });
+
+  it('returns an error result when the source is missing', () => {
+    const session = makeSession({ path: join(dir, 'gone.md'), title: 'Gone' });
+    const result = archiveSession(session);
+    expect(result.ok).toBe(false);
   });
 });

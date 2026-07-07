@@ -1,8 +1,17 @@
 // ABOUTME: Session loading and management for Blink TUI
 // ABOUTME: Handles filesystem operations and frontmatter parsing
 
-import { readFileSync, readdirSync, existsSync, unlinkSync, statSync } from 'fs';
-import { join, basename } from 'path';
+import {
+  readFileSync,
+  readdirSync,
+  existsSync,
+  unlinkSync,
+  statSync,
+  writeFileSync,
+  mkdirSync,
+  renameSync,
+} from 'fs';
+import { join, basename, dirname } from 'path';
 import matter from 'gray-matter';
 import { Session, SessionGroup, ParseError, ParseResult } from './types.js';
 import { config, getProjectPaths } from './config.js';
@@ -23,23 +32,25 @@ function resolveCreatedDate(rawCreated: unknown, filePath: string): Date {
   }
 }
 
+// Force the YAML engine and disable eval-capable engines. A snapshot file's
+// own fence token (e.g. `---js`) would otherwise select gray-matter's
+// `javascript` engine and eval its frontmatter. See advisory GHSA-57fp-36cq-pwwp.
+const SECURE_MATTER_OPTIONS: matter.GrayMatterOption<string, object> = {
+  language: 'yaml',
+  engines: {
+    javascript: () => {
+      throw new Error('JavaScript frontmatter is disabled');
+    },
+    js: () => {
+      throw new Error('JavaScript frontmatter is disabled');
+    },
+  },
+};
+
 export function parseSession(filePath: string): ParseResult {
   try {
     const content = readFileSync(filePath, 'utf-8');
-    // Force the YAML engine and disable eval-capable engines. A snapshot file's
-    // own fence token (e.g. `---js`) would otherwise select gray-matter's
-    // `javascript` engine and eval its frontmatter. See advisory GHSA-57fp-36cq-pwwp.
-    const { data, content: body } = matter(content, {
-      language: 'yaml',
-      engines: {
-        javascript: () => {
-          throw new Error('JavaScript frontmatter is disabled');
-        },
-        js: () => {
-          throw new Error('JavaScript frontmatter is disabled');
-        },
-      },
-    });
+    const { data, content: body } = matter(content, SECURE_MATTER_OPTIONS);
 
     // Extract sections from body
     const workingOnMatch = body.match(/## Working On\n([\s\S]*?)(?=\n##|$)/);
@@ -166,6 +177,56 @@ export function deleteSession(session: Session): boolean {
   }
 }
 
+export interface SessionUpdate {
+  title?: string;
+  tags?: string[];
+}
+
+// Rewrite a snapshot's frontmatter in place, updating only the provided fields
+// and preserving the body verbatim. Sessions are otherwise immutable after
+// save; this backs the TUI rename/retag actions (issue #60).
+export function updateSession(filePath: string, updates: SessionUpdate): boolean {
+  try {
+    const raw = readFileSync(filePath, 'utf-8');
+    const { data, content: body } = matter(raw, SECURE_MATTER_OPTIONS);
+
+    const nextData: Record<string, unknown> = { ...data };
+    if (updates.title !== undefined) nextData.title = updates.title;
+    if (updates.tags !== undefined) nextData.tags = updates.tags;
+
+    writeFileSync(filePath, matter.stringify(body, nextData), 'utf-8');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export type ArchiveResult =
+  | { ok: true; dest: string }
+  | { ok: false; reason: string };
+
+// Move a snapshot into a sibling `archived/` directory, mirroring
+// scripts/archive-snapshot.sh so the resume hook stops surfacing it while the
+// file survives. Never clobbers an existing archived copy of the same name.
+export function archiveSession(session: Session): ArchiveResult {
+  try {
+    const sourceDir = dirname(session.path);
+    const name = basename(session.path);
+    const archiveDir = join(sourceDir, 'archived');
+    mkdirSync(archiveDir, { recursive: true });
+
+    let dest = join(archiveDir, name);
+    if (existsSync(dest)) {
+      dest = join(archiveDir, `${name.replace(/\.md$/, '')}-${Date.now()}.md`);
+    }
+
+    renameSync(session.path, dest);
+    return { ok: true, dest };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export function getAllTags(groups: SessionGroup[]): string[] {
   const tags = new Set<string>();
   for (const group of groups) {
@@ -196,13 +257,18 @@ export function filterSessions(
           }
         }
 
-        // Search filter
+        // Search filter — spans the full snapshot content (title, working-on,
+        // status, tags, next steps, files, and context) so identifying text
+        // anywhere in the body is reachable (issue #61).
         if (query) {
           const searchable = [
             session.title,
             session.workingOn,
             session.status,
             ...session.tags,
+            ...(session.nextSteps ?? []),
+            ...(session.files ?? []),
+            session.context,
           ].filter(Boolean).join(' ').toLowerCase();
 
           if (!searchable.includes(query)) {
