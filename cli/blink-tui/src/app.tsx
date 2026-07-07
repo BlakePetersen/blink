@@ -2,7 +2,9 @@
 // ABOUTME: Manages state, keyboard input, and responsive layout
 
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useInput, useApp, useStdout } from 'ink';
+import { spawnSync } from 'child_process';
+import { Box, Text, useInput, useApp, useStdout, useStdin } from 'ink';
+import TextInput from 'ink-text-input';
 import { Header } from './components/Header.js';
 import { ThemeProvider } from './lib/theme.js';
 import { SessionList, buildListItems } from './components/SessionList.js';
@@ -10,7 +12,17 @@ import { Preview } from './components/Preview.js';
 import { FilterBar } from './components/FilterBar.js';
 import { Keybindings } from './components/Keybindings.js';
 import { Divider } from './components/Divider.js';
-import { loadAllSessions, filterSessions, getAllTags, deleteSession, loadFixtureSessions } from './lib/sessions.js';
+import {
+  loadAllSessions,
+  filterSessions,
+  getAllTags,
+  deleteSession,
+  updateSession,
+  archiveSession,
+  loadFixtureSessions,
+} from './lib/sessions.js';
+import { cycleTag } from './lib/tag-filter.js';
+import { resolveEditorCommand, resolveClipboardCommand } from './lib/actions.js';
 import { SessionGroup, Session, ParseError } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
@@ -27,6 +39,7 @@ interface Props {
 export function App({ cwd, onSelect }: Props) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const { setRawMode } = useStdin();
 
   // Track terminal dimensions and reflow on resize, independent of animation
   const { width, height } = useTerminalSize(stdout);
@@ -43,6 +56,12 @@ export function App({ cwd, onSelect }: Props) {
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Rename/retag text-input prompt (issue #60) and transient action feedback.
+  const [promptMode, setPromptMode] = useState<'rename' | 'retag' | null>(null);
+  const [promptValue, setPromptValue] = useState('');
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  // Whether the list is currently showing dev fixtures instead of real data.
+  const [showingFixtures, setShowingFixtures] = useState(false);
   // Fixed split ratio until drag-to-resize is implemented
   const splitRatio = 0.4;
 
@@ -81,6 +100,65 @@ export function App({ cwd, onSelect }: Props) {
   const listHeight = isStacked ? Math.floor(contentHeight * 0.5) : contentHeight;
   const previewHeight = isStacked ? contentHeight - listHeight : contentHeight;
 
+  // Reload real sessions from disk, leaving any fixture view behind.
+  const reload = () => {
+    const reloaded = loadAllSessions(cwd);
+    setAllGroups(reloaded.groups);
+    setParseErrors(reloaded.parseErrors);
+    setShowingFixtures(false);
+  };
+
+  // Copy a snapshot path to the system clipboard, falling back to surfacing the
+  // path in the footer so it can be selected manually (issue #65).
+  const copyPath = (path: string) => {
+    const [cmd, ...args] = resolveClipboardCommand(process.platform);
+    const result = spawnSync(cmd, args, { input: path });
+    if (!result.error && result.status === 0) {
+      setActionMessage('Copied path to clipboard');
+    } else {
+      setActionMessage(path);
+    }
+  };
+
+  // Open a snapshot in $EDITOR, suspending Ink's raw mode for the duration so
+  // the child owns the terminal, then reload in case it was edited (issue #65).
+  const openInEditor = (path: string) => {
+    const editor = resolveEditorCommand(process.env);
+    if (!editor) {
+      setActionMessage('No $EDITOR set');
+      return;
+    }
+    try {
+      setRawMode?.(false);
+      spawnSync(`${editor} ${JSON.stringify(path)}`, { stdio: 'inherit', shell: true });
+    } catch {
+      setActionMessage('Could not open editor');
+    } finally {
+      setRawMode?.(true);
+      reload();
+    }
+  };
+
+  // Persist the rename/retag prompt (issue #60).
+  const handlePromptSubmit = () => {
+    if (!selectedSession || !promptMode) {
+      setPromptMode(null);
+      setPromptValue('');
+      return;
+    }
+    const updates =
+      promptMode === 'rename'
+        ? { title: promptValue.trim() }
+        : { tags: promptValue.split(',').map(t => t.trim()).filter(Boolean) };
+    if (updateSession(selectedSession.path, updates)) {
+      reload();
+    } else {
+      setActionMessage(`Could not update "${selectedSession.title}"`);
+    }
+    setPromptMode(null);
+    setPromptValue('');
+  };
+
   // Keyboard handling
   useInput((input, key) => {
     // Handle delete confirmation
@@ -108,16 +186,28 @@ export function App({ cwd, onSelect }: Props) {
       return;
     }
 
-    // Any keypress in normal mode dismisses a stale delete-error line.
+    // Handle rename/retag prompt: TextInput owns typing/submit; esc cancels.
+    if (promptMode) {
+      if (key.escape) {
+        setPromptMode(null);
+        setPromptValue('');
+      }
+      return;
+    }
+
+    // Any keypress in normal mode dismisses a stale transient notice.
     if (deleteError) {
       setDeleteError(null);
     }
+    if (actionMessage) {
+      setActionMessage(null);
+    }
 
-    // Handle search mode
+    // Handle search mode. esc leaves the input but keeps the applied filter so
+    // a partial search isn't destroyed by exiting (issue #69).
     if (isSearching) {
       if (key.escape) {
         setIsSearching(false);
-        setSearchQuery('');
       }
       return; // TextInput handles other keys
     }
@@ -135,36 +225,68 @@ export function App({ cwd, onSelect }: Props) {
     } else if (input === '/') {
       setIsSearching(true);
     } else if (input === 't') {
-      // Cycle through tags
+      // Cycle the active tag forward (none → first → … → last → none).
       if (allTags.length > 0) {
-        if (selectedTags.length === 0) {
-          setSelectedTags([allTags[0]]);
-        } else {
-          const currentIdx = allTags.indexOf(selectedTags[0]);
-          const nextIdx = (currentIdx + 1) % (allTags.length + 1);
-          if (nextIdx === allTags.length) {
-            setSelectedTags([]);
-          } else {
-            setSelectedTags([allTags[nextIdx]]);
-          }
-        }
+        setSelectedTags(prev => cycleTag(allTags, prev, 'forward'));
+        setSelectedIndex(0);
+      }
+    } else if (input === 'T') {
+      // Cycle the active tag backward (issue #52).
+      if (allTags.length > 0) {
+        setSelectedTags(prev => cycleTag(allTags, prev, 'backward'));
         setSelectedIndex(0);
       }
     } else if (input === 'd') {
       if (selectedSession) {
         setConfirmDelete(selectedSession);
       }
+    } else if (input === 'n') {
+      if (selectedSession) {
+        setPromptMode('rename');
+        setPromptValue(selectedSession.title);
+      }
+    } else if (input === 'e') {
+      if (selectedSession) {
+        setPromptMode('retag');
+        setPromptValue(selectedSession.tags.join(', '));
+      }
+    } else if (input === 'a') {
+      if (selectedSession) {
+        const result = archiveSession(selectedSession);
+        if (result.ok) {
+          reload();
+          setSelectedIndex(i => Math.max(0, Math.min(i, totalSessions - 2)));
+          setActionMessage(`Archived "${selectedSession.title}"`);
+        } else {
+          setActionMessage(`Could not archive "${selectedSession.title}"`);
+        }
+      }
+    } else if (input === 'y') {
+      if (selectedSession) {
+        copyPath(selectedSession.path);
+      }
+    } else if (input === 'o') {
+      if (selectedSession) {
+        openInEditor(selectedSession.path);
+      }
     } else if (input === 'r' && isDevMode()) {
-      const fixtures = loadFixtureSessions(FIXTURES_DIR);
-      const fixtureGroup: SessionGroup = {
-        label: 'Dev Fixtures',
-        icon: '🧪',
-        sessions: fixtures,
-        isGlobal: false,
-      };
-      setAllGroups([fixtureGroup]);
-      setParseErrors([]);
-      setSelectedIndex(0);
+      // Toggle between dev fixtures and real data (issue #69).
+      if (showingFixtures) {
+        reload();
+        setSelectedIndex(0);
+      } else {
+        const fixtures = loadFixtureSessions(FIXTURES_DIR);
+        const fixtureGroup: SessionGroup = {
+          label: 'Dev Fixtures',
+          icon: '🧪',
+          sessions: fixtures,
+          isGlobal: false,
+        };
+        setAllGroups([fixtureGroup]);
+        setParseErrors([]);
+        setShowingFixtures(true);
+        setSelectedIndex(0);
+      }
     } else if (key.escape) {
       // esc clears any active filter first; only quits from a clean state so a
       // reflexive second esc after leaving search does not lose context (#46).
@@ -185,6 +307,31 @@ export function App({ cwd, onSelect }: Props) {
     setIsSearching(false);
     setSelectedIndex(0);
   };
+
+  // Rename/retag prompt overlay
+  if (promptMode) {
+    const isRename = promptMode === 'rename';
+    return (
+      <ThemeProvider>
+        <Box flexDirection="column" padding={1}>
+          <Text bold>{isRename ? 'Rename session' : 'Edit tags (comma-separated)'}</Text>
+          {selectedSession && <Text dimColor>{selectedSession.path}</Text>}
+          <Box marginTop={1}>
+            <Text>{isRename ? 'title: ' : 'tags: '}</Text>
+            <TextInput
+              value={promptValue}
+              onChange={setPromptValue}
+              onSubmit={handlePromptSubmit}
+              showCursor
+            />
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>enter to save, esc to cancel</Text>
+          </Box>
+        </Box>
+      </ThemeProvider>
+    );
+  }
 
   // Delete confirmation overlay
   if (confirmDelete) {
@@ -251,6 +398,11 @@ export function App({ cwd, onSelect }: Props) {
         {/* Transient delete-failure notice */}
         {deleteError && (
           <Text color="red">{deleteError}</Text>
+        )}
+
+        {/* Transient action feedback (archive / copy / editor) */}
+        {actionMessage && (
+          <Text dimColor>{actionMessage}</Text>
         )}
 
         {/* Footer */}
