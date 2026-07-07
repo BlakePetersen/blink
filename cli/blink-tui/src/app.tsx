@@ -22,7 +22,7 @@ import {
   loadFixtureSessions,
 } from './lib/sessions.js';
 import { cycleTag } from './lib/tag-filter.js';
-import { resolveEditorCommand, resolveClipboardCommand } from './lib/actions.js';
+import { resolveEditorCommand, resolveClipboardCommand, buildEditorInvocation } from './lib/actions.js';
 import { SessionGroup, Session, ParseError } from './lib/types.js';
 import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
@@ -130,7 +130,13 @@ export function App({ cwd, onSelect }: Props) {
     }
     try {
       setRawMode?.(false);
-      spawnSync(`${editor} ${JSON.stringify(path)}`, { stdio: 'inherit', shell: true });
+      // Spawn without a shell and pass the path as a literal argv element so an
+      // attacker-influenceable snapshot filename can never be shell-interpreted.
+      const { cmd, args } = buildEditorInvocation(editor, path);
+      const result = spawnSync(cmd, args, { stdio: 'inherit' });
+      if (result.error) {
+        setActionMessage('Could not open editor');
+      }
     } catch {
       setActionMessage('Could not open editor');
     } finally {
