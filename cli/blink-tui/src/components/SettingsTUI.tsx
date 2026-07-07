@@ -3,7 +3,13 @@
 
 import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
-import { Settings, THEME_PRESETS, DEFAULT_SETTINGS } from '../lib/settings.js';
+import {
+  Settings,
+  THEME_PRESETS,
+  DEFAULT_SETTINGS,
+  applyThemeToSettings,
+  snapSpeedToBucket,
+} from '../lib/settings.js';
 
 interface Props {
   initialSettings: Settings;
@@ -38,7 +44,6 @@ const MENU_ITEMS: MenuItem[] = [
   { type: 'dropdown', id: 'speed', label: 'Speed' },
   { type: 'toggle', id: 'reducedMotion', label: 'Reduced motion (master off)' },
   { type: 'toggle', id: 'cycling', label: 'Color cycling' },
-  { type: 'toggle', id: 'wave', label: 'Wave' },
   { type: 'toggle', id: 'shimmer', label: 'Shimmer' },
   { type: 'toggle', id: 'breathing', label: 'Breathing' },
   { type: 'button', id: 'save', label: 'Save' },
@@ -48,7 +53,13 @@ const MENU_ITEMS: MenuItem[] = [
 
 export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
   const { exit } = useApp();
-  const [settings, setSettings] = useState<Settings>(() => ({ ...initialSettings }));
+  const [settings, setSettings] = useState<Settings>(() => ({
+    ...initialSettings,
+    animation: {
+      ...initialSettings.animation,
+      speed: snapSpeedToBucket(initialSettings.animation.speed),
+    },
+  }));
   const [focusIndex, setFocusIndex] = useState(0);
 
   const currentSpeed = useMemo(() => SPEED_FROM_VALUE(settings.animation.speed), [settings.animation.speed]);
@@ -66,7 +77,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
     const nextIndex = (currentIndex + direction + THEME_NAMES.length) % THEME_NAMES.length;
     const newTheme = THEME_NAMES[nextIndex];
     const preset = THEME_PRESETS[newTheme];
-    setSettings({ ...preset });
+    setSettings(prev => applyThemeToSettings(prev, preset));
   };
 
   const cycleSpeed = (direction: 1 | -1) => {
@@ -95,7 +106,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
       }
     } else if (input === ' ') {
       if (item.type === 'toggle') {
-        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'shimmer' | 'breathing';
         updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.return) {
@@ -108,7 +119,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         onCancel();
         exit();
       } else if (item.type === 'toggle') {
-        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'shimmer' | 'breathing';
         updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.escape || input === 'q') {
@@ -173,14 +184,13 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
 
         {/* Animation toggles */}
         {renderToggle('cycling', 'Color cycling', settings.animation.cycling, focusIndex === 3)}
-        {renderToggle('wave', 'Wave', settings.animation.wave, focusIndex === 4)}
-        {renderToggle('shimmer', 'Shimmer', settings.animation.shimmer, focusIndex === 5)}
-        {renderToggle('breathing', 'Breathing', settings.animation.breathing, focusIndex === 6)}
+        {renderToggle('shimmer', 'Shimmer', settings.animation.shimmer, focusIndex === 4)}
+        {renderToggle('breathing', 'Breathing', settings.animation.breathing, focusIndex === 5)}
 
         <Box marginTop={1} flexDirection="row" gap={2}>
-          {renderButton('save', 'Save', focusIndex === 7)}
-          {renderButton('reset', 'Reset to defaults', focusIndex === 8)}
-          {renderButton('cancel', 'Cancel', focusIndex === 9)}
+          {renderButton('save', 'Save', focusIndex === 6)}
+          {renderButton('reset', 'Reset to defaults', focusIndex === 7)}
+          {renderButton('cancel', 'Cancel', focusIndex === 8)}
         </Box>
       </Box>
 
