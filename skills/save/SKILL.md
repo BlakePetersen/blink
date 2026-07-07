@@ -36,17 +36,29 @@ options:
     description: "Enter comma-separated tags"
 ```
 
-## Step 2: Get snapshot filepath
+## Step 2: Choose scope (project vs global)
 
-Run this command with the title:
+By default, save into the current project's `.claude/sessions/`. If the user
+asks to save **globally** (e.g. `/blink-save --global`, "save this globally", or
+"make it available everywhere"), save into `~/.claude/sessions/` instead so the
+snapshot is not tied to this project.
+
+## Step 3: Get snapshot filepath
+
+Run this command with the title. The second argument is the global flag —
+`false` for a project-local save, `true` for a global save:
 
 ```bash
+# Project-local (default)
 "${CLAUDE_PLUGIN_ROOT}/scripts/create-snapshot.sh" saved false "SESSION_TITLE_HERE"
+
+# Global (when the user requested --global)
+"${CLAUDE_PLUGIN_ROOT}/scripts/create-snapshot.sh" saved true "SESSION_TITLE_HERE"
 ```
 
-## Step 3: Create the snapshot
+## Step 4: Create the snapshot
 
-Write a markdown file to the filepath from Step 2 with this format:
+Write a markdown file to the filepath from Step 3 with this format:
 
 ```markdown
 ---
@@ -76,7 +88,7 @@ type: saved
 [Any additional context needed to continue this work later]
 ```
 
-## Step 4: Confirm to user
+## Step 5: Confirm to user
 
 Output:
 

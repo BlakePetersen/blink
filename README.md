@@ -14,6 +14,10 @@ Blink lets you save and restore Claude Code sessions. When you're deep in a task
 | `/blink-save` | Save a named snapshot with optional tags. Great for bookmarking milestones. |
 | `/blink-recall` | Browse and load saved sessions. |
 
+Add `--global` to `/blink-restart` or `/blink-save` to store the snapshot in
+`~/.claude/sessions/` (available from any project) instead of the current
+project's `.claude/sessions/`.
+
 ## Installation
 
 ### From Local Directory
@@ -80,6 +84,18 @@ When you Restore or dismiss an auto-detected restart snapshot, Blink archives it
 to `.claude/sessions/restarts/archived/` so the resume prompt does not keep
 re-surfacing the same stale session. Archived snapshots are kept for history but
 are never offered on start. Named saves under `saved/` persist untouched.
+
+## Settings
+
+Blink stores preferences in `~/.claude/plugins/blink/settings.json` (edit them
+in the TUI settings screen). Alongside the theme and animation options, a
+`behavior` block controls how sessions behave:
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `resumePrompt` | `true` | When `false`, the session-start hook stays silent and never offers to resume. |
+| `retentionCount` | `10` | How many recent snapshots to keep. |
+| `defaultScope` | `project` | Whether new snapshots default to project-local or `global`. |
 
 ## Storage
 
