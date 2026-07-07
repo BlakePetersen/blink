@@ -1,11 +1,27 @@
 // ABOUTME: Session loading and management for Blink TUI
 // ABOUTME: Handles filesystem operations and frontmatter parsing
 
-import { readFileSync, readdirSync, existsSync, unlinkSync } from 'fs';
+import { readFileSync, readdirSync, existsSync, unlinkSync, statSync } from 'fs';
 import { join, basename } from 'path';
 import matter from 'gray-matter';
 import { Session, SessionGroup, ParseError, ParseResult } from './types.js';
 import { config, getProjectPaths } from './config.js';
+
+// Resolve a session's created date, tolerating malformed frontmatter values.
+// An unparseable `created:` yields an Invalid Date (getTime() === NaN), which
+// poisons sort comparators and date formatting, so fall back to the file's
+// mtime and finally the epoch. See issue #38.
+function resolveCreatedDate(rawCreated: unknown, filePath: string): Date {
+  if (rawCreated !== undefined && rawCreated !== null) {
+    const parsed = new Date(rawCreated as string | number);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  try {
+    return statSync(filePath).mtime;
+  } catch {
+    return new Date(0);
+  }
+}
 
 export function parseSession(filePath: string): ParseResult {
   try {
@@ -49,8 +65,8 @@ export function parseSession(filePath: string): ParseResult {
       session: {
         path: filePath,
         title: data.title || basename(filePath, '.md'),
-        tags: data.tags || [],
-        created: new Date(data.created || 0),
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        created: resolveCreatedDate(data.created, filePath),
         project: data.project || '',
         type: data.type || 'saved',
         workingOn: workingOnMatch?.[1]?.trim(),
