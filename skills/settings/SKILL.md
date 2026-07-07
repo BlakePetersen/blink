@@ -1,5 +1,5 @@
 ---
-name: plugin
+name: settings
 description: "Configure Blink settings for themes and animations"
 allowed-tools: ["Bash(cat:*)", "Bash(jq:*)", "Bash(pnpm:*)", "Bash(mkdir:*)", "Read", "Write"]
 ---
@@ -10,10 +10,10 @@ Configure themes and animation effects for Blink's visual display.
 
 ## Interactive Mode
 
-When the user runs `/plugin` with no arguments, launch the settings TUI:
+When the user runs `/blink:settings` with no arguments, launch the settings TUI:
 
 ```bash
-cd ~/.claude/plugins/blink/cli/blink-tui && pnpm settings
+cd "${CLAUDE_PLUGIN_ROOT}/cli/blink-tui" && pnpm settings
 ```
 
 Tell the user:
@@ -37,7 +37,7 @@ For quick changes without launching the TUI:
 ### Set Theme
 
 ```
-/plugin theme <name>
+/blink:settings theme <name>
 ```
 
 Available themes: `goth-whimsy`, `minimal`, `cyberpunk`, `ember`
@@ -143,7 +143,7 @@ mkdir -p ~/.claude/plugins/blink
 ### Toggle Animation
 
 ```
-/plugin animation.<effect> on|off
+/blink:settings animation.<effect> on|off
 ```
 
 Available effects: `cycling`, `wave`, `shimmer`, `breathing`
@@ -164,7 +164,7 @@ cat ~/.claude/plugins/blink/settings.json 2>/dev/null || echo '{}'
 ### Adjust Speed
 
 ```
-/plugin speed <ms>
+/blink:settings speed <ms>
 ```
 
 Speed is in milliseconds (lower = faster). Reasonable range: 100-1000ms.
@@ -177,7 +177,7 @@ Speed is in milliseconds (lower = faster). Reasonable range: 100-1000ms.
 ### Reset to Defaults
 
 ```
-/plugin reset
+/blink:settings reset
 ```
 
 1. Write the default goth-whimsy preset to settings.json
