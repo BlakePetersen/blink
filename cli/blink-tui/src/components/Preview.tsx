@@ -9,6 +9,10 @@ import { useTheme } from '../lib/theme.js';
 import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation.js';
 import { truncateToWidth } from '../lib/width.js';
 import { formatTag, PLAIN_TITLE_MARKER } from '../lib/plain-mode.js';
+import { moreLabel } from '../lib/list-view.js';
+
+// Sections cap their item lists so the preview fits; hidden items get a marker.
+const SECTION_CAP = 5;
 
 interface Props {
   session: Session | null;
@@ -117,9 +121,12 @@ export function Preview({ session, parseError, width, height }: Props) {
       {session.nextSteps && session.nextSteps.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
           <Text color="gray">next steps</Text>
-          {session.nextSteps.slice(0, 5).map((step, i) => (
+          {session.nextSteps.slice(0, SECTION_CAP).map((step, i) => (
             <Text key={i}>  · {truncate(step, width - 6)}</Text>
           ))}
+          {moreLabel(session.nextSteps.length, SECTION_CAP) && (
+            <Text dimColor>  {moreLabel(session.nextSteps.length, SECTION_CAP)}</Text>
+          )}
         </Box>
       )}
 
@@ -127,9 +134,12 @@ export function Preview({ session, parseError, width, height }: Props) {
       {session.files && session.files.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
           <Text color="gray">files</Text>
-          {session.files.slice(0, 5).map((file, i) => (
+          {session.files.slice(0, SECTION_CAP).map((file, i) => (
             <Text key={i} dimColor>  · {truncate(file, width - 6)}</Text>
           ))}
+          {moreLabel(session.files.length, SECTION_CAP) && (
+            <Text dimColor>  {moreLabel(session.files.length, SECTION_CAP)}</Text>
+          )}
         </Box>
       )}
     </Box>
