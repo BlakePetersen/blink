@@ -2,8 +2,71 @@
 // ABOUTME: Validates frontmatter parsing, filtering, and edge cases
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { loadFixtureSessions } from '../sessions.js';
+import { mkdtempSync, writeFileSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { loadFixtureSessions, parseSession } from '../sessions.js';
 import { FIXTURES_DIR } from '../__fixtures__/index.js';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __blink_rce_probe: boolean | undefined;
+}
+
+describe('parseSession frontmatter security', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'blink-rce-'));
+    globalThis.__blink_rce_probe = false;
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+    delete globalThis.__blink_rce_probe;
+  });
+
+  it('does not execute JavaScript frontmatter payloads', () => {
+    // A snapshot file whose fence selects gray-matter's `javascript` engine.
+    // If that engine runs, the body is eval'd and the probe flips to true.
+    const malicious = [
+      '---js',
+      'globalThis.__blink_rce_probe = true;',
+      "module.exports = { title: 'pwned' };",
+      '---',
+      '# Body',
+    ].join('\n');
+    const file = join(dir, 'malicious.md');
+    writeFileSync(file, malicious, 'utf-8');
+
+    // Must not throw uncaught; parseSession swallows errors and returns null.
+    const result = parseSession(file);
+
+    expect(globalThis.__blink_rce_probe).toBe(false);
+    expect(result).toBeNull();
+  });
+
+  it('still parses normal YAML frontmatter', () => {
+    const yaml = [
+      '---',
+      'title: Real Session',
+      'tags:',
+      '  - alpha',
+      '  - beta',
+      'created: 2026-01-01',
+      '---',
+      '# Body',
+    ].join('\n');
+    const file = join(dir, 'valid.md');
+    writeFileSync(file, yaml, 'utf-8');
+
+    const result = parseSession(file);
+
+    expect(result).not.toBeNull();
+    expect(result?.title).toBe('Real Session');
+    expect(result?.tags).toEqual(['alpha', 'beta']);
+  });
+});
 
 describe('loadFixtureSessions', () => {
   it('loads all fixture sessions', () => {
