@@ -82,5 +82,29 @@ else
   fail "Expected global path format, got: $OUTPUT"
 fi
 
+# Test 7: Degenerate title with symbols and spaces falls back to timestamp
+echo "Test 7: Degenerate title ('!!! ???')"
+OUTPUT=$("$CREATE_SCRIPT" saved false '!!! ???' 2>&1)
+BASENAME=$(basename "$OUTPUT")
+if [ "$BASENAME" = ".md" ] || [ "$BASENAME" = "-.md" ]; then
+  fail "Degenerate title produced invalid filename: $BASENAME"
+elif [[ "$BASENAME" =~ ^session-[0-9]{4}-[0-9]{2}-[0-9]{2}t[0-9]{2}-[0-9]{2}-[0-9]{2}\.md$ ]]; then
+  pass "Degenerate title falls back to timestamp"
+else
+  fail "Expected 'session-<timestamp>.md', got: $BASENAME"
+fi
+
+# Test 8: Symbols-only title (no spaces) falls back to timestamp
+echo "Test 8: Symbols-only title ('@#\$%')"
+OUTPUT=$("$CREATE_SCRIPT" saved false '@#$%' 2>&1)
+BASENAME=$(basename "$OUTPUT")
+if [ "$BASENAME" = ".md" ] || [ "$BASENAME" = "-.md" ]; then
+  fail "Symbols-only title produced invalid filename: $BASENAME"
+elif [[ "$BASENAME" =~ ^session-[0-9]{4}-[0-9]{2}-[0-9]{2}t[0-9]{2}-[0-9]{2}-[0-9]{2}\.md$ ]]; then
+  pass "Symbols-only title falls back to timestamp"
+else
+  fail "Expected 'session-<timestamp>.md', got: $BASENAME"
+fi
+
 echo ""
 echo -e "${GREEN}All tests passed!${NC}"
