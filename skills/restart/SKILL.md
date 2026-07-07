@@ -14,7 +14,7 @@ Run this command to get the filepath. The second argument is the global flag —
 `false` writes into the current project's `.claude/sessions/`, `true` writes
 into `~/.claude/sessions/` so the handoff is available everywhere. Default to
 project-local; use `true` only when the user asks to restart **globally** (e.g.
-`/blink-restart --global`).
+`/blink:restart --global`).
 
 ```bash
 # Project-local (default)
