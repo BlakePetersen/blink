@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { Box, Text } from 'ink';
-import { BACKGROUNDS } from '../lib/backgrounds.js';
+import { getBackgrounds } from '../lib/backgrounds.js';
 
 interface Props {
   height: number;
@@ -13,6 +13,7 @@ interface Props {
 
 export function Divider({ height, isDragging, splitPercent }: Props) {
   const lines = Array(height).fill(null);
+  const dividerBg = getBackgrounds().divider;
 
   return (
     <Box flexDirection="column" width={3}>
@@ -20,7 +21,7 @@ export function Divider({ height, isDragging, splitPercent }: Props) {
         <Text
           key={i}
           color={isDragging ? 'cyan' : 'gray'}
-          backgroundColor={BACKGROUNDS.divider}
+          backgroundColor={dividerBg}
         >
           {isDragging && i === Math.floor(height / 2) && splitPercent !== undefined
             ? `${String(splitPercent).padStart(2, ' ')}%`.slice(-3)
