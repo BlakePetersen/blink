@@ -4,14 +4,27 @@
 import { readFileSync, readdirSync, existsSync, unlinkSync } from 'fs';
 import { join, basename } from 'path';
 import matter from 'gray-matter';
-import { Session, SessionGroup } from './types.js';
+import { Session, SessionGroup, ParseError, ParseResult } from './types.js';
 import { config, getProjectPaths } from './config.js';
 
-export function parseSession(filePath: string): Session | null {
+export function parseSession(filePath: string): ParseResult {
   try {
     const content = readFileSync(filePath, 'utf-8');
-    const { data, content: body } = matter(content);
-    
+    // Force the YAML engine and disable eval-capable engines. A snapshot file's
+    // own fence token (e.g. `---js`) would otherwise select gray-matter's
+    // `javascript` engine and eval its frontmatter. See advisory GHSA-57fp-36cq-pwwp.
+    const { data, content: body } = matter(content, {
+      language: 'yaml',
+      engines: {
+        javascript: () => {
+          throw new Error('JavaScript frontmatter is disabled');
+        },
+        js: () => {
+          throw new Error('JavaScript frontmatter is disabled');
+        },
+      },
+    });
+
     // Extract sections from body
     const workingOnMatch = body.match(/## Working On\n([\s\S]*?)(?=\n##|$)/);
     const statusMatch = body.match(/## Status\n([\s\S]*?)(?=\n##|$)/);
@@ -32,87 +45,100 @@ export function parseSession(filePath: string): Session | null {
       .map(line => line.replace(/^[-*]\s*/, '').trim()) || [];
     
     return {
-      path: filePath,
-      title: data.title || basename(filePath, '.md'),
-      tags: data.tags || [],
-      created: new Date(data.created || 0),
-      project: data.project || '',
-      type: data.type || 'saved',
-      workingOn: workingOnMatch?.[1]?.trim(),
-      status: statusMatch?.[1]?.trim(),
-      nextSteps,
-      files,
-      context: contextMatch?.[1]?.trim(),
+      ok: true,
+      session: {
+        path: filePath,
+        title: data.title || basename(filePath, '.md'),
+        tags: data.tags || [],
+        created: new Date(data.created || 0),
+        project: data.project || '',
+        type: data.type || 'saved',
+        workingOn: workingOnMatch?.[1]?.trim(),
+        status: statusMatch?.[1]?.trim(),
+        nextSteps,
+        files,
+        context: contextMatch?.[1]?.trim(),
+      },
     };
-  } catch {
-    return null;
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }
 }
 
-function loadSessionsFromDir(dirPath: string, type: 'saved' | 'restart'): Session[] {
-  if (!existsSync(dirPath)) return [];
-  
+export interface DirLoadResult {
+  sessions: Session[];
+  parseErrors: ParseError[];
+}
+
+export function loadSessionsFromDir(
+  dirPath: string,
+  type: 'saved' | 'restart'
+): DirLoadResult {
+  if (!existsSync(dirPath)) return { sessions: [], parseErrors: [] };
+
+  let files: string[];
   try {
-    const files = readdirSync(dirPath).filter(f => f.endsWith('.md'));
-    return files
-      .map(f => parseSession(join(dirPath, f)))
-      .filter((s): s is Session => s !== null)
-      .map(s => ({ ...s, type }))
-      .sort((a, b) => b.created.getTime() - a.created.getTime());
-  } catch {
-    return [];
+    files = readdirSync(dirPath).filter(f => f.endsWith('.md'));
+  } catch (err) {
+    // The directory itself is unreadable; surface it as a single error.
+    const reason = err instanceof Error ? err.message : String(err);
+    return { sessions: [], parseErrors: [{ file: dirPath, reason }] };
   }
+
+  const sessions: Session[] = [];
+  const parseErrors: ParseError[] = [];
+
+  for (const f of files) {
+    const filePath = join(dirPath, f);
+    const result = parseSession(filePath);
+    if (result.ok) {
+      sessions.push({ ...result.session, type });
+    } else {
+      parseErrors.push({ file: filePath, reason: result.reason });
+    }
+  }
+
+  sessions.sort((a, b) => b.created.getTime() - a.created.getTime());
+  return { sessions, parseErrors };
 }
 
-export function loadAllSessions(cwd: string): SessionGroup[] {
+export interface LoadResult {
+  groups: SessionGroup[];
+  parseErrors: ParseError[];
+}
+
+export function loadAllSessions(cwd: string): LoadResult {
   const projectPaths = getProjectPaths(cwd);
   const groups: SessionGroup[] = [];
-  
-  // Project saved
-  const projectSaved = loadSessionsFromDir(projectPaths.saved, 'saved');
-  if (projectSaved.length > 0) {
-    groups.push({
-      label: 'saved',
-      icon: '☽',
-      sessions: projectSaved,
-      isGlobal: false,
-    });
+  const parseErrors: ParseError[] = [];
+
+  const sources: Array<{
+    dir: string;
+    type: 'saved' | 'restart';
+    label: string;
+    icon: string;
+    isGlobal: boolean;
+  }> = [
+    { dir: projectPaths.saved, type: 'saved', label: 'saved', icon: '☽', isGlobal: false },
+    { dir: projectPaths.restarts, type: 'restart', label: 'restarts', icon: '↻', isGlobal: false },
+    { dir: config.globalPaths.saved, type: 'saved', label: 'saved (global)', icon: '☽', isGlobal: true },
+    { dir: config.globalPaths.restarts, type: 'restart', label: 'restarts (global)', icon: '↻', isGlobal: true },
+  ];
+
+  for (const source of sources) {
+    const { sessions, parseErrors: errors } = loadSessionsFromDir(source.dir, source.type);
+    parseErrors.push(...errors);
+    if (sessions.length > 0) {
+      groups.push({
+        label: source.label,
+        icon: source.icon,
+        sessions,
+        isGlobal: source.isGlobal,
+      });
+    }
   }
-  
-  // Project restarts
-  const projectRestarts = loadSessionsFromDir(projectPaths.restarts, 'restart');
-  if (projectRestarts.length > 0) {
-    groups.push({
-      label: 'restarts',
-      icon: '↻',
-      sessions: projectRestarts,
-      isGlobal: false,
-    });
-  }
-  
-  // Global saved
-  const globalSaved = loadSessionsFromDir(config.globalPaths.saved, 'saved');
-  if (globalSaved.length > 0) {
-    groups.push({
-      label: 'saved (global)',
-      icon: '☽',
-      sessions: globalSaved,
-      isGlobal: true,
-    });
-  }
-  
-  // Global restarts
-  const globalRestarts = loadSessionsFromDir(config.globalPaths.restarts, 'restart');
-  if (globalRestarts.length > 0) {
-    groups.push({
-      label: 'restarts (global)',
-      icon: '↻',
-      sessions: globalRestarts,
-      isGlobal: true,
-    });
-  }
-  
-  return groups;
+
+  return { groups, parseErrors };
 }
 
 export function deleteSession(session: Session): boolean {
@@ -181,7 +207,8 @@ export function loadFixtureSessions(fixturesDir: string): Session[] {
     const files = readdirSync(fixturesDir).filter(f => f.endsWith('.md'));
     return files
       .map(f => parseSession(join(fixturesDir, f)))
-      .filter((s): s is Session => s !== null)
+      .filter((r): r is Extract<ParseResult, { ok: true }> => r.ok)
+      .map(r => r.session)
       .sort((a, b) => b.created.getTime() - a.created.getTime());
   } catch {
     return [];

@@ -36,6 +36,7 @@ interface MenuItem {
 const MENU_ITEMS: MenuItem[] = [
   { type: 'dropdown', id: 'theme', label: 'Theme' },
   { type: 'dropdown', id: 'speed', label: 'Speed' },
+  { type: 'toggle', id: 'reducedMotion', label: 'Reduced motion (master off)' },
   { type: 'toggle', id: 'cycling', label: 'Color cycling' },
   { type: 'toggle', id: 'wave', label: 'Wave' },
   { type: 'toggle', id: 'shimmer', label: 'Shimmer' },
@@ -94,7 +95,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
       }
     } else if (input === ' ') {
       if (item.type === 'toggle') {
-        const animationKey = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'wave' | 'shimmer' | 'breathing';
         updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.return) {
@@ -107,7 +108,7 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         onCancel();
         exit();
       } else if (item.type === 'toggle') {
-        const animationKey = item.id as 'cycling' | 'wave' | 'shimmer' | 'breathing';
+        const animationKey = item.id as 'reducedMotion' | 'cycling' | 'wave' | 'shimmer' | 'breathing';
         updateAnimation(animationKey, !settings.animation[animationKey]);
       }
     } else if (key.escape || input === 'q') {
@@ -167,16 +168,19 @@ export function SettingsTUI({ initialSettings, onSave, onCancel }: Props) {
         {/* Speed dropdown */}
         {renderDropdown('speed', 'Speed', currentSpeed, focusIndex === 1)}
 
+        {/* Master reduced-motion switch */}
+        {renderToggle('reducedMotion', 'Reduced motion (master off)', settings.animation.reducedMotion, focusIndex === 2)}
+
         {/* Animation toggles */}
-        {renderToggle('cycling', 'Color cycling', settings.animation.cycling, focusIndex === 2)}
-        {renderToggle('wave', 'Wave', settings.animation.wave, focusIndex === 3)}
-        {renderToggle('shimmer', 'Shimmer', settings.animation.shimmer, focusIndex === 4)}
-        {renderToggle('breathing', 'Breathing', settings.animation.breathing, focusIndex === 5)}
+        {renderToggle('cycling', 'Color cycling', settings.animation.cycling, focusIndex === 3)}
+        {renderToggle('wave', 'Wave', settings.animation.wave, focusIndex === 4)}
+        {renderToggle('shimmer', 'Shimmer', settings.animation.shimmer, focusIndex === 5)}
+        {renderToggle('breathing', 'Breathing', settings.animation.breathing, focusIndex === 6)}
 
         <Box marginTop={1} flexDirection="row" gap={2}>
-          {renderButton('save', 'Save', focusIndex === 6)}
-          {renderButton('reset', 'Reset to defaults', focusIndex === 7)}
-          {renderButton('cancel', 'Cancel', focusIndex === 8)}
+          {renderButton('save', 'Save', focusIndex === 7)}
+          {renderButton('reset', 'Reset to defaults', focusIndex === 8)}
+          {renderButton('cancel', 'Cancel', focusIndex === 9)}
         </Box>
       </Box>
 

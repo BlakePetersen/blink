@@ -12,9 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
-          version: 8
+          package_json_file: cli/blink-tui/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -23,7 +23,7 @@ jobs:
           cache-dependency-path: cli/blink-tui/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: cd cli/blink-tui && pnpm install
+        run: cd cli/blink-tui && pnpm install --frozen-lockfile
 
       - name: Run tests
         run: cd cli/blink-tui && pnpm test
