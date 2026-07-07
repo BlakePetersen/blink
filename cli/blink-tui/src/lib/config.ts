@@ -16,12 +16,6 @@ export const config = {
     saved: join(homedir(), '.claude/sessions/saved'),
     restarts: join(homedir(), '.claude/sessions/restarts'),
   },
-  
-  // UI settings
-  ui: {
-    maxSessionsPerGroup: 50,
-    previewWidth: 40, // percentage
-  },
 };
 
 export function getProjectPaths(cwd: string) {

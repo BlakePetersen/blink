@@ -43,9 +43,8 @@ export function App({ cwd, onSelect }: Props) {
   const [isSearching, setIsSearching] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Session | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  // Fixed values until drag-to-resize is implemented
+  // Fixed split ratio until drag-to-resize is implemented
   const splitRatio = 0.4;
-  const isDragging = false;
 
   // Derived state
   const filteredGroups = filterSessions(allGroups, searchQuery, selectedTags);
@@ -237,11 +236,7 @@ export function App({ cwd, onSelect }: Props) {
 
           {/* Divider (side-by-side only) */}
           {!isStacked && (
-            <Divider
-              height={contentHeight}
-              isDragging={isDragging}
-              splitPercent={Math.round(splitRatio * 100)}
-            />
+            <Divider height={contentHeight} />
           )}
 
           {/* Preview */}

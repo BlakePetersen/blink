@@ -106,5 +106,17 @@ else
   fail "Expected 'session-<timestamp>.md', got: $BASENAME"
 fi
 
+# Test 9: Title with quotes and backslashes slugifies to a safe filename
+echo "Test 9: Title with quotes/backslashes ('He said \"hi\" C:\\path')"
+OUTPUT=$("$CREATE_SCRIPT" saved false 'He said "hi" C:\path' 2>&1)
+BASENAME=$(basename "$OUTPUT")
+if [[ "$BASENAME" == *'"'* ]] || [[ "$BASENAME" == *'\'* ]]; then
+  fail "Slug retained quotes/backslashes: $BASENAME"
+elif [ "$BASENAME" = "he-said-hi-cpath.md" ]; then
+  pass "Quotes and backslashes stripped from slug"
+else
+  fail "Expected 'he-said-hi-cpath.md', got: $BASENAME"
+fi
+
 echo ""
 echo -e "${GREEN}All tests passed!${NC}"

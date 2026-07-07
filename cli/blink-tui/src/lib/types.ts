@@ -30,14 +30,3 @@ export interface ParseError {
 export type ParseResult =
   | { ok: true; session: Session }
   | { ok: false; reason: string };
-
-export type ViewMode = 'project' | 'global' | 'all';
-
-export interface AppState {
-  groups: SessionGroup[];
-  selectedIndex: number;
-  viewMode: ViewMode;
-  searchQuery: string;
-  selectedTags: string[];
-  isSearching: boolean;
-}
