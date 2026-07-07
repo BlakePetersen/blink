@@ -91,6 +91,19 @@ describe('animation', () => {
       expect(results.some(r => r === true)).toBe(true);
       expect(results.some(r => r === false)).toBe(true);
     });
+
+    it('honors the speed setting for its time bucket', () => {
+      // At elapsed 500ms: speed 250 -> bucket 2, speed 500 -> bucket 1.
+      // For charIndex 0 with probability 0.02 the two buckets straddle the
+      // threshold, so the speed must change the result.
+      expect(shouldShimmer(0, 500, 0.02, 250)).toBe(false);
+      expect(shouldShimmer(0, 500, 0.02, 500)).toBe(true);
+    });
+
+    it('produces the same result for the same effective bucket', () => {
+      // 500ms at speed 250 and 1000ms at speed 500 both land in bucket 2.
+      expect(shouldShimmer(0, 500, 0.5, 250)).toBe(shouldShimmer(0, 1000, 0.5, 500));
+    });
   });
 
   describe('calculateAnimationState', () => {
