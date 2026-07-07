@@ -16,6 +16,7 @@ import { isDevMode } from './lib/dev-mode.js';
 import { FIXTURES_DIR } from './lib/__fixtures__/index.js';
 import { getLayoutMode, calculatePaneWidths, getHeaderSize } from './lib/layout.js';
 import { HEADER_HEIGHTS } from './lib/ascii-art.js';
+import { useTerminalSize } from './lib/useTerminalSize.js';
 
 interface Props {
   cwd: string;
@@ -26,9 +27,8 @@ export function App({ cwd, onSelect }: Props) {
   const { exit } = useApp();
   const { stdout } = useStdout();
 
-  // Get terminal dimensions
-  const width = stdout?.columns || 80;
-  const height = stdout?.rows || 24;
+  // Track terminal dimensions and reflow on resize, independent of animation
+  const { width, height } = useTerminalSize(stdout);
 
   // Load sessions synchronously on first render to avoid race with crash
   const initialGroups = React.useMemo(() => loadAllSessions(cwd), [cwd]);
