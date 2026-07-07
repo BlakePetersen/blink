@@ -1,10 +1,9 @@
 // ABOUTME: Tests for animation utility functions
-// ABOUTME: Validates color interpolation, cycle positions, wave effects, and shimmer
+// ABOUTME: Validates color interpolation, cycle positions, breathing, and shimmer
 
 import { describe, it, expect } from 'vitest';
 import {
   calculateCyclePosition,
-  calculateWavePosition,
   calculateBreathPhase,
   shouldShimmer,
   calculateAnimationState,
@@ -25,14 +24,6 @@ describe('animation', () => {
       expect(calculateCyclePosition(0, 4000)).toBe(0);
       expect(calculateCyclePosition(2000, 4000)).toBe(0.5);
       expect(calculateCyclePosition(4000, 4000)).toBe(0);
-    });
-  });
-
-  describe('calculateWavePosition', () => {
-    it('returns value between 0 and 1', () => {
-      const position = calculateWavePosition(500, 2000);
-      expect(position).toBeGreaterThanOrEqual(0);
-      expect(position).toBeLessThanOrEqual(1);
     });
   });
 
@@ -110,7 +101,6 @@ describe('animation', () => {
     it('returns all animation state properties', () => {
       const state = calculateAnimationState(1000);
       expect(state).toHaveProperty('cyclePosition');
-      expect(state).toHaveProperty('wavePosition');
       expect(state).toHaveProperty('breathPhase');
       expect(state).toHaveProperty('elapsed');
     });

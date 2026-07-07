@@ -1,12 +1,8 @@
 // ABOUTME: Animation calculations for TUI effects
-// ABOUTME: Pure functions for cycling, wave, shimmer, and breathing effects
+// ABOUTME: Pure functions for cycling, shimmer, and breathing effects
 
 export function calculateCyclePosition(elapsed: number, cycleDuration: number): number {
   return (elapsed % cycleDuration) / cycleDuration;
-}
-
-export function calculateWavePosition(elapsed: number, waveDuration: number): number {
-  return (elapsed % waveDuration) / waveDuration;
 }
 
 export function calculateBreathPhase(elapsed: number, breathDuration: number): number {
@@ -81,7 +77,6 @@ export function adjustBrightness(hex: string, multiplier: number): string {
 
 export interface AnimationState {
   cyclePosition: number;
-  wavePosition: number;
   breathPhase: number;
   elapsed: number;
 }
@@ -89,12 +84,10 @@ export interface AnimationState {
 export function calculateAnimationState(
   elapsed: number,
   cycleDuration: number = 4000,
-  waveDuration: number = 2000,
   breathDuration: number = 4000
 ): AnimationState {
   return {
     cyclePosition: calculateCyclePosition(elapsed, cycleDuration),
-    wavePosition: calculateWavePosition(elapsed, waveDuration),
     breathPhase: calculateBreathPhase(elapsed, breathDuration),
     elapsed,
   };

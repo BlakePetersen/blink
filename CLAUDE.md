@@ -73,8 +73,8 @@ blink/
 ├── cli/blink-tui/       # Terminal UI (React/Ink)
 │   ├── src/
 │   │   ├── components/  # UI components
-│   │   ├── lib/         # Business logic (MUST have tests)
-│   │   └── __fixtures__/ # Mock data for testing
+│   │   └── lib/         # Business logic (MUST have tests)
+│   │       └── __fixtures__/ # Mock data for testing
 ├── commands/            # Slash command definitions
 ├── hooks/               # Claude Code hooks
 ├── scripts/             # Bash utilities
