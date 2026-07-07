@@ -2,7 +2,10 @@
 // ABOUTME: Validates frontmatter parsing, filtering, and edge cases
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { loadFixtureSessions } from '../sessions.js';
+import { mkdtempSync, writeFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { loadFixtureSessions, loadSessionsFromDir } from '../sessions.js';
 import { FIXTURES_DIR } from '../__fixtures__/index.js';
 
 describe('loadFixtureSessions', () => {
@@ -30,6 +33,61 @@ describe('loadFixtureSessions', () => {
     const specialSession = sessions.find(s => s.title.includes('quotes'));
     expect(specialSession).toBeDefined();
     expect(specialSession?.title).toContain('"quotes"');
+  });
+});
+
+describe('loadSessionsFromDir parse errors', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'blink-sessions-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('loads valid sessions while collecting parse errors for malformed files', () => {
+    writeFileSync(
+      join(dir, 'good.md'),
+      '---\ntitle: Good Session\ncreated: 2026-01-01\n---\n## Working On\nStuff\n'
+    );
+    writeFileSync(
+      join(dir, 'bad.md'),
+      '---\ntitle: "unterminated\ncreated: 2026-01-01\n---\nbody\n'
+    );
+
+    const { sessions, parseErrors } = loadSessionsFromDir(dir, 'saved');
+
+    expect(sessions.map(s => s.title)).toContain('Good Session');
+    expect(sessions).toHaveLength(1);
+    expect(parseErrors).toHaveLength(1);
+    expect(parseErrors[0].file).toContain('bad.md');
+    expect(parseErrors[0].reason).toBeTruthy();
+  });
+
+  it('returns empty results for a directory that does not exist', () => {
+    const { sessions, parseErrors } = loadSessionsFromDir(
+      join(dir, 'nope'),
+      'saved'
+    );
+    expect(sessions).toEqual([]);
+    expect(parseErrors).toEqual([]);
+  });
+
+  it('reports no parse errors when all files are valid', () => {
+    writeFileSync(
+      join(dir, 'a.md'),
+      '---\ntitle: A\ncreated: 2026-01-02\n---\n## Status\nok\n'
+    );
+    writeFileSync(
+      join(dir, 'b.md'),
+      '---\ntitle: B\ncreated: 2026-01-03\n---\n## Status\nok\n'
+    );
+
+    const { sessions, parseErrors } = loadSessionsFromDir(dir, 'saved');
+    expect(sessions).toHaveLength(2);
+    expect(parseErrors).toEqual([]);
   });
 });
 

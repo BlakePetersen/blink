@@ -22,6 +22,15 @@ export interface SessionGroup {
   isGlobal: boolean;
 }
 
+export interface ParseError {
+  file: string;
+  reason: string;
+}
+
+export type ParseResult =
+  | { ok: true; session: Session }
+  | { ok: false; reason: string };
+
 export type ViewMode = 'project' | 'global' | 'all';
 
 export interface AppState {
