@@ -15,9 +15,14 @@ export function calculateBreathPhase(elapsed: number, breathDuration: number): n
   return 0.85 + 0.15 * Math.sin(position * Math.PI * 2);
 }
 
-export function shouldShimmer(charIndex: number, elapsed: number, probability: number = 0.02): boolean {
-  // Deterministic "randomness" based on position and time
-  const seed = (charIndex * 127 + Math.floor(elapsed / 250)) % 100;
+export function shouldShimmer(
+  charIndex: number,
+  elapsed: number,
+  probability: number = 0.02,
+  speed: number = 250
+): boolean {
+  // Deterministic "randomness" based on position and the configured time bucket
+  const seed = (charIndex * 127 + Math.floor(elapsed / speed)) % 100;
   return seed < probability * 100;
 }
 

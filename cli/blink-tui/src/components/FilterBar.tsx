@@ -28,18 +28,18 @@ export function FilterBar({
   width,
   maxTags = 5,
 }: Props) {
-  const { settings } = useTheme();
+  const { settings, reducedMotion } = useTheme();
   const { colors } = settings;
   const [cursorVisible, setCursorVisible] = useState(true);
 
   // Pulsing cursor effect
   useEffect(() => {
-    if (!isSearching) return;
+    if (!isSearching || reducedMotion) return;
     const interval = setInterval(() => {
       setCursorVisible(v => !v);
     }, 500);
     return () => clearInterval(interval);
-  }, [isSearching]);
+  }, [isSearching, reducedMotion]);
 
   const visibleTags = tags.slice(0, maxTags);
   const hiddenCount = tags.length - maxTags;
