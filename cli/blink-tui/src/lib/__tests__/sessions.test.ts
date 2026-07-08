@@ -34,7 +34,6 @@ function makeGroup(sessions: Session[], overrides: Partial<SessionGroup> = {}): 
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __blink_rce_probe: boolean | undefined;
 }
 

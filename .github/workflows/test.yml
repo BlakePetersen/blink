@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         run: cd cli/blink-tui && pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: cd cli/blink-tui && pnpm lint
+
       - name: Run tests
         run: cd cli/blink-tui && pnpm test
 

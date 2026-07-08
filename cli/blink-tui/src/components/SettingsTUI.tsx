@@ -41,6 +41,7 @@ const THEME_NAMES = Object.keys(THEME_PRESETS);
 const SCOPE_OPTIONS: SessionScope[] = ['project', 'global'];
 const RETENTION_OPTIONS = [5, 10, 20, 50];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- read only via typeof to derive AnimationToggleId
 const ANIMATION_TOGGLE_IDS = ['reducedMotion', 'cycling', 'shimmer', 'breathing'] as const;
 type AnimationToggleId = (typeof ANIMATION_TOGGLE_IDS)[number];
 
