@@ -10,6 +10,7 @@ import { interpolateColor, shouldShimmer, brightenColor } from '../lib/animation
 import { truncateToWidth } from '../lib/width.js';
 import { formatTag, PLAIN_TITLE_MARKER } from '../lib/plain-mode.js';
 import { moreLabel } from '../lib/list-view.js';
+import { projectLabel } from '../lib/project-view.js';
 
 // Sections cap their item lists so the preview fits; hidden items get a marker.
 const SECTION_CAP = 5;
@@ -75,6 +76,7 @@ export function Preview({ session, parseError, width, height }: Props) {
   }
 
   const timeAgo = formatDistanceToNow(session.created, { addSuffix: true });
+  const origin = projectLabel(session.project);
 
   return (
     <Box flexDirection="column" width={width} height={height} paddingX={2} paddingY={1}>
@@ -87,6 +89,7 @@ export function Preview({ session, parseError, width, height }: Props) {
       <Box marginTop={1}>
         <Text dimColor>
           {session.type} · {timeAgo}
+          {origin ? ` · ${truncate(origin, Math.max(0, width - 4))}` : ''}
         </Text>
       </Box>
 
